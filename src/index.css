@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+@theme {
+  --font-serif: 'Iowan Old Style', 'Palatino', Georgia, serif;
+
+  --color-ink: #e8e3d3;
+  --color-navy-deep: #0a1024;
+  --color-navy-mid: #14213d;
+  --color-navy-black: #060814;
+  --color-gold: #c9962e;
+  --color-gold-light: #f2d98c;
+  --color-muted: #8a93a8;
+  --color-faint: #5a6478;
+  --color-green: #6fbf8e;
+  --color-red: #c96a4a;
+  --color-purple: #8a7fd6;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-serif);
+  background: radial-gradient(120% 80% at 50% -10%, var(--color-navy-mid) 0%, var(--color-navy-deep) 55%, var(--color-navy-black) 100%);
+  color: var(--color-ink);
+  min-height: 100svh;
+}
