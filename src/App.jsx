@@ -1,20 +1,35 @@
-const hasEnv = Boolean(
-  import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY
-)
+import { useAuth } from './hooks/useAuth'
+import LoginScreen from './components/LoginScreen'
+import LogoutButton from './components/LogoutButton'
 
 function App() {
+  const { user, loading } = useAuth()
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-gold text-2xl animate-pulse">🜃</div>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return <LoginScreen />
+  }
+
   return (
-    <div className="min-h-screen flex items-center justify-center px-6">
-      <div className="max-w-sm text-center">
-        <div className="text-4xl mb-4 text-gold">🜃</div>
-        <h1 className="text-2xl mb-2">Grimório de Bolso</h1>
+    <div className="min-h-screen px-6 py-8">
+      <div className="max-w-sm mx-auto">
+        <header className="flex items-center justify-between mb-8">
+          <div>
+            <div className="text-2xl text-gold">🜃</div>
+            <h1 className="text-lg mt-1">Grimório de Bolso</h1>
+          </div>
+          <LogoutButton />
+        </header>
         <p className="text-muted text-sm leading-relaxed">
-          Fundação do app criada. Próxima etapa: autenticação por magic link.
-        </p>
-        <p className="mt-4 text-xs" style={{ color: hasEnv ? '#6fbf8e' : '#c96a4a' }}>
-          {hasEnv
-            ? 'Variáveis do Supabase configuradas.'
-            : 'Configure VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY em .env.local.'}
+          Sessão ativa como <span className="text-gold">{user.email}</span>.
+          Próxima etapa: casca do app e aba Grimórios.
         </p>
       </div>
     </div>
