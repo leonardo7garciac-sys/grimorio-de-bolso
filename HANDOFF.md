@@ -50,6 +50,14 @@ Regra de ouro: **o front nunca calcula XP, saldo ou permissão — o banco
    create_custom_spell().
 6. `006_extras.sql` — CRIADA PELO CLAUDE CODE no P1: rpc am_i_paying()
    e view de posts do fórum expondo autor só por nickname.
+7. `007_modelo_hibrido.sql` — RODADA PELO USUÁRIO antes do P3: redefine
+   is_paying() para "passe do Círculo com validade" (circle_passes,
+   my_circle_expiry, grant_circle_pass); my_grimoires ganha a terceira
+   porta de acesso (subscriber_included).
+8. `008_forum_fix_view.sql` — CRIADA PELO CLAUDE CODE no P5: corrige bug
+   da view da 006 (security_invoker esbarrava na RLS de profiles e só
+   mostrava os posts do próprio usuário). Substitui por forum_feed()
+   e forum_post_comments(), no padrão de get_ranking_da_lua.
 
 ---
 
@@ -194,11 +202,10 @@ const { data: ok } = await supabase.from('guideline_acceptances')
 await supabase.from('guideline_acceptances')
   .insert({ user_id: user.id, version: g.version })
 
-let q = supabase.from('forum_posts')            // usar a VIEW da 006
-  .select('*, forum_comments(count)').eq('status', 'ativo')
-  .order('created_at', { ascending: false })
-if (cat) q = q.eq('category', cat)
-const { data: posts } = await q
+// listagem e thread: usar as RPCs da 008 (não a tabela/view direto —
+// elas já aplicam is_paying(), filtro de categoria e nickname do autor)
+const { data: posts } = await supabase.rpc('forum_feed', { p_category: cat })
+const { data: comments } = await supabase.rpc('forum_post_comments', { p_post: postId })
 
 await supabase.from('forum_posts').insert({
   author_id: user.id, category, title, body })
