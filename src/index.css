@@ -30,3 +30,74 @@ body {
   outline: 2px solid var(--color-gold);
   outline-offset: 2px;
 }
+
+/* Efeitos visuais dos cosméticos de perfil ao redor do sigilo (MageSigil).
+   --sigil-size é o diâmetro do sigilo; o inset em % escala o efeito com ele. */
+.mage-sigil-aura-glow {
+  position: absolute;
+  inset: -22%;
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(242, 217, 140, 0.55), rgba(201, 150, 46, 0.15) 60%, transparent 75%);
+  filter: blur(2px);
+  animation: sigil-aura-pulse 2.6s ease-in-out infinite;
+}
+
+@keyframes sigil-aura-pulse {
+  0%, 100% { opacity: 0.75; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.08); }
+}
+
+.mage-sigil-moon-ring {
+  position: absolute;
+  inset: -16%;
+  border-radius: 9999px;
+  border: 1px solid rgba(232, 227, 211, 0.35);
+  /* radial-gradient(circle <size>) exige um comprimento, não porcentagem —
+     por isso calc() a partir de --sigil-size em vez de "circle 8%". */
+  background:
+    radial-gradient(circle calc(var(--sigil-size) * 0.06) at 50% 3%, var(--color-ink) 90%, transparent 100%),
+    radial-gradient(circle calc(var(--sigil-size) * 0.06) at 85% 20%, rgba(232, 227, 211, 0.2) 90%, transparent 100%),
+    radial-gradient(circle calc(var(--sigil-size) * 0.06) at 85% 80%, var(--color-navy-black) 90%, transparent 100%),
+    radial-gradient(circle calc(var(--sigil-size) * 0.06) at 50% 97%, var(--color-ink) 90%, transparent 100%),
+    radial-gradient(circle calc(var(--sigil-size) * 0.06) at 15% 80%, rgba(232, 227, 211, 0.2) 90%, transparent 100%),
+    radial-gradient(circle calc(var(--sigil-size) * 0.06) at 15% 20%, var(--color-navy-black) 90%, transparent 100%);
+  animation: sigil-moon-rotate 18s linear infinite;
+}
+
+@keyframes sigil-moon-rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.mage-sigil-fallback-ring {
+  position: absolute;
+  inset: -10%;
+  border-radius: 9999px;
+  border: 1px solid rgba(201, 150, 46, 0.5);
+  box-shadow: 0 0 10px rgba(201, 150, 46, 0.25);
+}
+
+/* Avatar etéreo (tela do Mago) */
+.avatar-aura-glow {
+  position: absolute;
+  inset: -12%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(242, 217, 140, 0.4), rgba(201, 150, 46, 0.12) 55%, transparent 75%);
+  filter: blur(8px);
+  animation: sigil-aura-pulse 3.2s ease-in-out infinite;
+}
+
+.avatar-glyph-float {
+  animation: avatar-glyph-bob 4s ease-in-out infinite;
+}
+
+@keyframes avatar-glyph-bob {
+  0%, 100% { transform: translate(-50%, 0); }
+  50% { transform: translate(-50%, -6px); }
+}
+
+.avatar-moon-ring-group {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: sigil-moon-rotate 24s linear infinite;
+}

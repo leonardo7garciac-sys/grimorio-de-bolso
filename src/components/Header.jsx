@@ -1,13 +1,22 @@
 import { useMemo } from 'react'
 import { useProfile } from '../hooks/useProfile'
 import LogoutButton from './LogoutButton'
+import MageSigil from './MageSigil'
 
 function formatDate(iso) {
   return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
 }
 
-export default function Header() {
-  const { profile, titles, balance, circleExpiry, cosmeticTitleName, loading } = useProfile()
+export default function Header({ onOpenProfile }) {
+  const { profile, titles, balance, circleExpiry, cosmeticTitleName, equippedItems, loading } = useProfile()
+
+  const equippedCosmetics = useMemo(
+    () =>
+      equippedItems
+        .filter((e) => e.shop_items?.kind === 'cosmetico_perfil')
+        .map((e) => e.shop_items),
+    [equippedItems]
+  )
 
   const { current, next, progress } = useMemo(() => {
     if (!profile || titles.length === 0) return { current: null, next: null, progress: 0 }
@@ -38,15 +47,7 @@ export default function Header() {
       className="sticky top-0 z-20 -mx-5 px-5 pb-4 mb-2 bg-navy-deep/85 backdrop-blur-md border-b border-gold/10 flex items-center gap-3.5"
       style={{ paddingTop: 'calc(env(safe-area-inset-top) + 1.5rem)' }}
     >
-      <div
-        className="w-[52px] h-[52px] rounded-full grid place-items-center text-2xl text-navy-deep flex-shrink-0"
-        style={{
-          background: 'radial-gradient(circle at 35% 30%, var(--color-gold-light), var(--color-gold) 70%)',
-          boxShadow: '0 0 22px rgba(201,150,46,.3)',
-        }}
-      >
-        {current.glyph}
-      </div>
+      <MageSigil glyph={current.glyph} size={52} equippedCosmetics={equippedCosmetics} onClick={onOpenProfile} />
       <div className="flex-1 min-w-0">
         <div className="text-base whitespace-nowrap overflow-hidden text-ellipsis">
           {current.name}

@@ -5,6 +5,7 @@ import LoginScreen from './components/LoginScreen'
 import Header from './components/Header'
 import BottomNav from './components/BottomNav'
 import PremiumGate from './components/PremiumGate'
+import MagoScreen from './components/MagoScreen'
 import { TABS } from './lib/tabs'
 import GrimoriosTab from './tabs/GrimoriosTab'
 import QuestsTab from './tabs/QuestsTab'
@@ -28,6 +29,7 @@ function App() {
   const { user, loading: authLoading } = useAuth()
   const { paying, loading: profileLoading } = useProfile()
   const [tab, setTab] = useState('grimoires')
+  const [showProfile, setShowProfile] = useState(false)
 
   if (authLoading) {
     return (
@@ -48,7 +50,7 @@ function App() {
   return (
     <div className="min-h-screen" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 6rem)' }}>
       <div className="max-w-md mx-auto px-5">
-        <Header />
+        <Header onOpenProfile={() => setShowProfile(true)} />
         <main className="pt-2">
           {profileLoading ? (
             <p className="text-faint text-sm text-center py-10">Carregando…</p>
@@ -60,6 +62,7 @@ function App() {
         </main>
       </div>
       <BottomNav tab={tab} onChange={setTab} paying={paying} />
+      {showProfile && <MagoScreen onClose={() => setShowProfile(false)} />}
     </div>
   )
 }

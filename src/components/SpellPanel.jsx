@@ -10,6 +10,7 @@ function formatEntryDate(iso) {
 
 export default function SpellPanel({
   hue,
+  description,
   status,
   onStatusChange,
   entries,
@@ -51,6 +52,10 @@ export default function SpellPanel({
           </button>
         ))}
       </div>
+
+      {description && (
+        <p className="text-[13px] text-muted leading-relaxed mb-3.5">{description}</p>
+      )}
 
       <div className="text-[10px] tracking-wide uppercase text-gold mb-2">Diário de práticas</div>
       <textarea

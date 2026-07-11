@@ -11,6 +11,7 @@ const EMPTY = {
   paying: false,
   circleExpiry: null,
   cosmeticTitleName: null,
+  equippedItems: [],
 }
 
 export function ProfileProvider({ children }) {
@@ -27,6 +28,7 @@ export function ProfileProvider({ children }) {
       { data: balance },
       { data: paying },
       { data: circleExpiry },
+      { data: equippedItems },
     ] = await Promise.all([
       supabase
         .from('profiles')
@@ -36,6 +38,7 @@ export function ProfileProvider({ children }) {
       supabase.rpc('my_balance'),
       supabase.rpc('am_i_paying'),
       supabase.rpc('my_circle_expiry'),
+      supabase.from('user_items').select('item_id, shop_items(*)').eq('equipped', true),
     ])
 
     let cosmeticTitleName = null
@@ -55,6 +58,7 @@ export function ProfileProvider({ children }) {
       paying: Boolean(paying),
       circleExpiry: circleExpiry ?? null,
       cosmeticTitleName,
+      equippedItems: equippedItems ?? [],
     })
     setLoading(false)
   }, [user])

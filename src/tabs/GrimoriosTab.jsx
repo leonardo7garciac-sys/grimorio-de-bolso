@@ -180,6 +180,7 @@ export default function GrimoriosTab() {
         {detail && (
           <SpellPanel
             hue={row.grimoire_hue}
+            description={row.spell_description}
             status={row.status}
             onStatusChange={(status) => setStatus(row.spell_id, status)}
             entries={entries}

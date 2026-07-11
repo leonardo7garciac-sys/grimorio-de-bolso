@@ -83,7 +83,7 @@ export default function TesouroTab() {
       return
     }
     if (data !== 'ok') alert(data)
-    await loadShop()
+    await Promise.all([loadShop(), refreshProfile()])
   }
 
   async function setActiveTitle(itemId) {
