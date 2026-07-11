@@ -34,6 +34,7 @@ export default function ForumTab() {
 
   const [selectedPost, setSelectedPost] = useState(null)
   const [comments, setComments] = useState(null)
+  const [commentsError, setCommentsError] = useState('')
   const [commentDraft, setCommentDraft] = useState('')
   const [commentBusy, setCommentBusy] = useState(false)
 
@@ -117,8 +118,10 @@ export default function ForumTab() {
   async function openPost(post) {
     setSelectedPost(post)
     setComments(null)
+    setCommentsError('')
     const { data, error } = await supabase.rpc('forum_post_comments', { p_post: post.id })
-    if (!error) setComments(data ?? [])
+    if (error) setCommentsError(error.message)
+    else setComments(data ?? [])
   }
 
   async function addComment() {
@@ -213,7 +216,9 @@ export default function ForumTab() {
         </Card>
 
         <SectionLabel>Respostas</SectionLabel>
-        {comments === null ? (
+        {commentsError ? (
+          <p className="text-red text-sm text-center py-6">{commentsError}</p>
+        ) : comments === null ? (
           <p className="text-faint text-sm text-center py-6">Carregando…</p>
         ) : comments.length === 0 ? (
           <p className="text-faint text-xs text-center py-4">Nenhuma resposta ainda. Sê o primeiro.</p>
@@ -242,7 +247,7 @@ export default function ForumTab() {
             onChange={(e) => setCommentDraft(e.target.value)}
             placeholder="Escreve uma resposta…"
             rows={3}
-            className="w-full box-border bg-white/[.04] border border-gold/25 rounded-lg text-ink text-sm p-2.5 resize-y placeholder:text-faint focus:outline-none focus:border-gold"
+            className="w-full box-border bg-white/[.04] border border-gold/25 rounded-lg text-ink text-base p-2.5 resize-y placeholder:text-faint focus:outline-none focus:border-gold"
           />
           <div className="mt-2.5">
             <GoldButton small disabled={commentBusy || commentDraft.trim().length < 2} onClick={addComment}>
@@ -289,14 +294,14 @@ export default function ForumTab() {
             value={newTitle}
             onChange={(e) => setNewTitle(e.target.value)}
             placeholder="Título (8–140 caracteres)"
-            className="w-full box-border bg-white/[.04] border border-gold/25 rounded-lg text-ink text-sm p-2.5 mb-2 placeholder:text-faint focus:outline-none focus:border-gold"
+            className="w-full box-border bg-white/[.04] border border-gold/25 rounded-lg text-ink text-base p-2.5 mb-2 placeholder:text-faint focus:outline-none focus:border-gold"
           />
           <textarea
             value={newBody}
             onChange={(e) => setNewBody(e.target.value)}
             placeholder="Corpo do post (20–8000 caracteres)"
             rows={6}
-            className="w-full box-border bg-white/[.04] border border-gold/25 rounded-lg text-ink text-sm p-2.5 resize-y placeholder:text-faint focus:outline-none focus:border-gold"
+            className="w-full box-border bg-white/[.04] border border-gold/25 rounded-lg text-ink text-base p-2.5 resize-y placeholder:text-faint focus:outline-none focus:border-gold"
           />
           {createError && <p className="text-xs text-red mt-2">{createError}</p>}
           <div className="mt-3">

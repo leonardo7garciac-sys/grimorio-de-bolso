@@ -58,7 +58,7 @@ export default function SpellPanel({
         onChange={(e) => setDraft(e.target.value)}
         placeholder="O que a prática de hoje revelou?"
         rows={2}
-        className="w-full box-border bg-white/[.04] border border-gold/25 rounded-lg text-ink text-[13px] p-2.5 resize-y placeholder:text-faint focus:outline-none focus:border-gold"
+        className="w-full box-border bg-white/[.04] border border-gold/25 rounded-lg text-ink text-base p-2.5 resize-y placeholder:text-faint focus:outline-none focus:border-gold"
       />
       <div className="my-2 mb-3">
         <GoldButton small disabled={!draft.trim() || saving} onClick={submitEntry}>

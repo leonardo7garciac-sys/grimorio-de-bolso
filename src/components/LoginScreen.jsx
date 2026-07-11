@@ -55,7 +55,7 @@ export default function LoginScreen() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="seu@email.com"
-              className="w-full box-border bg-white/5 border border-gold/30 rounded-lg text-ink text-sm px-3 py-2.5 placeholder:text-faint focus:outline-none focus:border-gold"
+              className="w-full box-border bg-white/5 border border-gold/30 rounded-lg text-ink text-base px-3 py-2.5 placeholder:text-faint focus:outline-none focus:border-gold"
             />
             {status === 'error' && <p className="text-xs text-red">{error}</p>}
             <button

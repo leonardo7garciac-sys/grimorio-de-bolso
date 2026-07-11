@@ -18,6 +18,7 @@ export default function GrimoriosTab() {
 
   const [catalogSpells, setCatalogSpells] = useState(null)
   const [grimoires, setGrimoires] = useState(null)
+  const [catalogError, setCatalogError] = useState('')
   const [newName, setNewName] = useState('')
   const [newDesc, setNewDesc] = useState('')
   const [forging, setForging] = useState(false)
@@ -38,10 +39,15 @@ export default function GrimoriosTab() {
   async function loadCatalog() {
     setCatalogSpells(null)
     setGrimoires(null)
-    const [{ data: spells }, { data: grim }] = await Promise.all([
+    setCatalogError('')
+    const [{ data: spells, error: spellsError }, { data: grim, error: grimError }] = await Promise.all([
       supabase.from('spells').select('id, name, description, xp_reward, grimoire_id').is('owner_id', null),
       supabase.from('my_grimoires').select('*'),
     ])
+    if (spellsError || grimError) {
+      setCatalogError((spellsError ?? grimError).message)
+      return
+    }
     setCatalogSpells(spells ?? [])
     setGrimoires((grim ?? []).slice().sort((a, b) => a.sort_order - b.sort_order))
   }
@@ -205,14 +211,14 @@ export default function GrimoriosTab() {
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             placeholder="Nome da técnica (ex.: Escaneamento etérico matinal)"
-            className="w-full box-border bg-white/[.04] border border-gold/25 rounded-lg text-ink text-sm p-2.5 mb-2 placeholder:text-faint focus:outline-none focus:border-gold"
+            className="w-full box-border bg-white/[.04] border border-gold/25 rounded-lg text-ink text-base p-2.5 mb-2 placeholder:text-faint focus:outline-none focus:border-gold"
           />
           <textarea
             value={newDesc}
             onChange={(e) => setNewDesc(e.target.value)}
             placeholder="Descrição (opcional)"
             rows={2}
-            className="w-full box-border bg-white/[.04] border border-gold/25 rounded-lg text-ink text-[13px] p-2.5 resize-y placeholder:text-faint focus:outline-none focus:border-gold"
+            className="w-full box-border bg-white/[.04] border border-gold/25 rounded-lg text-ink text-base p-2.5 resize-y placeholder:text-faint focus:outline-none focus:border-gold"
           />
           <div className="mt-2.5 flex items-center gap-3">
             <GoldButton small disabled={newName.trim().length < 3 || forging} onClick={forge}>
@@ -223,7 +229,9 @@ export default function GrimoriosTab() {
         </Card>
 
         <SectionLabel>Do catálogo Baltazar</SectionLabel>
-        {catalogSpells === null || grimoires === null ? (
+        {catalogError ? (
+          <p className="text-red text-sm text-center py-8">{catalogError}</p>
+        ) : catalogSpells === null || grimoires === null ? (
           <p className="text-faint text-sm text-center py-8">Carregando catálogo…</p>
         ) : (
           grimoires.map((g) => {

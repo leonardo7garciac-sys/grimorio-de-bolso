@@ -24,14 +24,20 @@ export default function Header() {
 
   if (loading || !profile || !current) {
     return (
-      <header className="sticky top-0 z-20 -mx-5 px-5 py-5 mb-2 bg-navy-deep/85 backdrop-blur-md border-b border-gold/10">
+      <header
+        className="sticky top-0 z-20 -mx-5 px-5 pb-5 mb-2 bg-navy-deep/85 backdrop-blur-md border-b border-gold/10"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top) + 1.25rem)' }}
+      >
         <div className="h-13 rounded-xl bg-white/5 animate-pulse" />
       </header>
     )
   }
 
   return (
-    <header className="sticky top-0 z-20 -mx-5 px-5 pt-6 pb-4 mb-2 bg-navy-deep/85 backdrop-blur-md border-b border-gold/10 flex items-center gap-3.5">
+    <header
+      className="sticky top-0 z-20 -mx-5 px-5 pb-4 mb-2 bg-navy-deep/85 backdrop-blur-md border-b border-gold/10 flex items-center gap-3.5"
+      style={{ paddingTop: 'calc(env(safe-area-inset-top) + 1.5rem)' }}
+    >
       <div
         className="w-[52px] h-[52px] rounded-full grid place-items-center text-2xl text-navy-deep flex-shrink-0"
         style={{

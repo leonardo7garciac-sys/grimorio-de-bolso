@@ -46,7 +46,7 @@ function App() {
   const TabContent = TAB_COMPONENTS[tab]
 
   return (
-    <div className="min-h-screen pb-24">
+    <div className="min-h-screen" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 6rem)' }}>
       <div className="max-w-md mx-auto px-5">
         <Header />
         <main className="pt-2">

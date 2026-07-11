@@ -100,7 +100,7 @@ export default function RankingTab() {
             value={nickDraft}
             onChange={(e) => setNickDraft(e.target.value)}
             placeholder="ex.: Corvo de Saturno"
-            className="w-full box-border bg-white/[.04] border border-gold/25 rounded-lg text-ink text-sm p-2.5 mb-3 placeholder:text-faint focus:outline-none focus:border-gold"
+            className="w-full box-border bg-white/[.04] border border-gold/25 rounded-lg text-ink text-base p-2.5 mb-3 placeholder:text-faint focus:outline-none focus:border-gold"
           />
           <label className="flex items-center gap-2 text-sm mb-3 cursor-pointer">
             <input
