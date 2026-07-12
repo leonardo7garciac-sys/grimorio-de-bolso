@@ -94,6 +94,10 @@ export default function AmigosView({ onProposeTrade }) {
         friendNickname={viewingFriend.friend_nickname}
         onBack={() => setViewingFriend(null)}
         onProposeTrade={onProposeTrade}
+        onBlocked={async () => {
+          setViewingFriend(null)
+          await load()
+        }}
       />
     )
   }

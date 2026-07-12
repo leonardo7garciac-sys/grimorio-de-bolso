@@ -139,6 +139,24 @@ export default function MensagensView() {
     setEligibility((prev) => ({ ...prev, accepted: true }))
   }
 
+  async function blockFriend() {
+    const ok = window.confirm(
+      `Bloquear ${openThread.friend_nickname}? A amizade será desfeita e ele não poderá te adicionar, propor trocas ou enviar mensagens. Ele não será notificado.`
+    )
+    if (!ok) return
+    const { data, error } = await supabase.rpc('block_user', { p_nickname: openThread.friend_nickname })
+    if (error) {
+      alert(error.message)
+      return
+    }
+    if (data !== 'ok') {
+      alert(data)
+      return
+    }
+    setOpenThread(null)
+    await loadThreads()
+  }
+
   async function reportMessage(messageId) {
     const reason = window.prompt('Motivo da denúncia:')
     if (!reason || !reason.trim()) return
@@ -163,7 +181,17 @@ export default function MensagensView() {
         >
           ← Correspondências
         </button>
-        <SectionLabel>{openThread.friend_nickname}</SectionLabel>
+        <div className="flex items-center">
+          <SectionLabel>{openThread.friend_nickname}</SectionLabel>
+          <div className="flex-1" />
+          <button
+            type="button"
+            onClick={blockFriend}
+            className="bg-transparent border-none text-red text-[11px] cursor-pointer"
+          >
+            bloquear
+          </button>
+        </div>
 
         {messages === null ? (
           <p className="text-faint text-sm text-center py-8">Carregando…</p>

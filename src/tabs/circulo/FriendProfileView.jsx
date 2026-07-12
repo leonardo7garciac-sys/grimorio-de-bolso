@@ -10,11 +10,12 @@ const KIND_LABEL = {
 }
 const KIND_GLYPH = { arma_magica: '🗡', item_encantado: '🜏', titulo_especial: '🔥', cosmetico_perfil: '✨' }
 
-export default function FriendProfileView({ friendId, friendNickname, onBack, onProposeTrade }) {
+export default function FriendProfileView({ friendId, friendNickname, onBack, onProposeTrade, onBlocked }) {
   const [profile, setProfile] = useState(null)
   const [error, setError] = useState('')
   const [itemImages, setItemImages] = useState({})
   const [sigilUrl, setSigilUrl] = useState(null)
+  const [blocking, setBlocking] = useState(false)
 
   useEffect(() => {
     load()
@@ -51,6 +52,25 @@ export default function FriendProfileView({ friendId, friendNickname, onBack, on
     }
   }
 
+  async function block() {
+    const ok = window.confirm(
+      `Bloquear ${friendNickname}? A amizade será desfeita e ele não poderá te adicionar, propor trocas ou enviar mensagens. Ele não será notificado.`
+    )
+    if (!ok) return
+    setBlocking(true)
+    const { data, error } = await supabase.rpc('block_user', { p_nickname: friendNickname })
+    setBlocking(false)
+    if (error) {
+      alert(error.message)
+      return
+    }
+    if (data !== 'ok') {
+      alert(data)
+      return
+    }
+    onBlocked?.()
+  }
+
   return (
     <>
       <button
@@ -75,9 +95,12 @@ export default function FriendProfileView({ friendId, friendNickname, onBack, on
               {profile.cosmetic_title ? ` · ${profile.cosmetic_title}` : ''}
             </div>
             <div className="text-xs text-gold mt-1">{profile.xp_total} XP</div>
-            <GhostButton className="mt-3" onClick={() => onProposeTrade(friendId)}>
-              Propor troca
-            </GhostButton>
+            <div className="flex gap-2 mt-3">
+              <GhostButton onClick={() => onProposeTrade(friendId)}>Propor troca</GhostButton>
+              <GhostButton hue="var(--color-red)" disabled={blocking} onClick={block}>
+                {blocking ? 'Bloqueando…' : 'Bloquear'}
+              </GhostButton>
+            </div>
           </div>
 
           {profile.servitor && (
