@@ -6,4 +6,5 @@ export const TABS = [
   { id: 'library', label: 'Acervo', icon: '📜', premium: true },
   { id: 'forum', label: 'Fórum', icon: '🗣', premium: true },
   { id: 'ranking', label: 'Ranking', icon: '☽', premium: true },
+  { id: 'servidor', label: 'Servidor', icon: '🕸', premium: false },
 ]

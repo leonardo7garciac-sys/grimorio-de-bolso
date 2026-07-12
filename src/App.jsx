@@ -14,6 +14,7 @@ import BestiarioTab from './tabs/BestiarioTab'
 import AcervoTab from './tabs/AcervoTab'
 import ForumTab from './tabs/ForumTab'
 import RankingTab from './tabs/RankingTab'
+import ServidorTab from './tabs/ServidorTab'
 
 const TAB_COMPONENTS = {
   grimoires: GrimoriosTab,
@@ -23,11 +24,12 @@ const TAB_COMPONENTS = {
   library: AcervoTab,
   forum: ForumTab,
   ranking: RankingTab,
+  servidor: ServidorTab,
 }
 
 function App() {
   const { user, loading: authLoading } = useAuth()
-  const { paying, loading: profileLoading } = useProfile()
+  const { paying, servitorsLowCount, loading: profileLoading } = useProfile()
   const [tab, setTab] = useState('grimoires')
   const [showProfile, setShowProfile] = useState(false)
 
@@ -61,7 +63,7 @@ function App() {
           )}
         </main>
       </div>
-      <BottomNav tab={tab} onChange={setTab} paying={paying} />
+      <BottomNav tab={tab} onChange={setTab} paying={paying} servitorsLowCount={servitorsLowCount} />
       {showProfile && <MagoScreen onClose={() => setShowProfile(false)} />}
     </div>
   )
