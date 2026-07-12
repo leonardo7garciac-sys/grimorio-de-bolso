@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { envReady } from './lib/supabaseAdmin'
 import QuestQueue from './screens/QuestQueue.jsx'
 import ForumReports from './screens/ForumReports.jsx'
+import DmReports from './screens/DmReports.jsx'
 
 export default function App() {
   const [tab, setTab] = useState('quests')
@@ -38,9 +39,20 @@ export default function App() {
           >
             Denúncias do Fórum
           </button>
+          <button
+            type="button"
+            className={tab === 'dm' ? 'tab active' : 'tab'}
+            onClick={() => setTab('dm')}
+          >
+            Denúncias de Mensagens
+          </button>
         </nav>
       </header>
-      <main>{tab === 'quests' ? <QuestQueue /> : <ForumReports />}</main>
+      <main>
+        {tab === 'quests' && <QuestQueue />}
+        {tab === 'forum' && <ForumReports />}
+        {tab === 'dm' && <DmReports />}
+      </main>
     </div>
   )
 }

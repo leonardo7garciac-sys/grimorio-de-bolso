@@ -15,6 +15,7 @@ import AcervoTab from './tabs/AcervoTab'
 import ForumTab from './tabs/ForumTab'
 import RankingTab from './tabs/RankingTab'
 import ServidorTab from './tabs/ServidorTab'
+import CirculoTab from './tabs/CirculoTab'
 
 const TAB_COMPONENTS = {
   grimoires: GrimoriosTab,
@@ -25,6 +26,7 @@ const TAB_COMPONENTS = {
   forum: ForumTab,
   ranking: RankingTab,
   servidor: ServidorTab,
+  circle: CirculoTab,
 }
 
 function App() {

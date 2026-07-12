@@ -7,4 +7,5 @@ export const TABS = [
   { id: 'forum', label: 'Fórum', icon: '🗣', premium: true },
   { id: 'ranking', label: 'Ranking', icon: '☽', premium: true },
   { id: 'servidor', label: 'Servidor', icon: '🕸', premium: false },
+  { id: 'circle', label: 'Círculo', icon: '👥', premium: false },
 ]

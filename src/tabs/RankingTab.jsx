@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useProfile } from '../hooks/useProfile'
-import { SectionLabel, GoldButton } from '../components/ui'
+import { Card, SectionLabel } from '../components/ui'
 
 const SET_IDENTITY_MESSAGE = {
   nickname_em_uso: 'Esse nickname já está em uso.',
@@ -15,13 +15,11 @@ export default function RankingTab() {
 
   const [ranking, setRanking] = useState(null)
   const [error, setError] = useState('')
-
-  const isOptedIn = Boolean(profile?.nickname && profile?.show_in_ranking)
-  const [editing, setEditing] = useState(!isOptedIn)
-  const [nickDraft, setNickDraft] = useState(profile?.nickname ?? '')
-  const [showDraft, setShowDraft] = useState(profile?.show_in_ranking ?? false)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
+
+  const hasNickname = Boolean(profile?.nickname)
+  const isOptedIn = Boolean(profile?.nickname && profile?.show_in_ranking)
 
   async function loadRanking() {
     const { data, error } = await supabase.rpc('get_ranking_da_lua')
@@ -36,13 +34,14 @@ export default function RankingTab() {
     loadRanking()
   }, [])
 
-  async function saveIdentity(e) {
-    e.preventDefault()
+  // O nickname em si é definido na aba Círculo (é livre, não premium) — aqui
+  // só cuidamos do opt-in de aparecer no ranking, já com o nickname pronto.
+  async function toggleShow(nextShow) {
     setSaveError('')
     setSaving(true)
     const { data, error } = await supabase.rpc('set_ranking_identity', {
-      p_nickname: nickDraft.trim(),
-      p_show: showDraft,
+      p_nickname: profile.nickname,
+      p_show: nextShow,
     })
     setSaving(false)
     if (error) {
@@ -53,7 +52,6 @@ export default function RankingTab() {
       setSaveError(SET_IDENTITY_MESSAGE[data] ?? data)
       return
     }
-    setEditing(false)
     await Promise.all([refreshProfile(), loadRanking()])
   }
 
@@ -70,71 +68,35 @@ export default function RankingTab() {
 
   return (
     <>
-      <div className="flex items-center">
-        <SectionLabel>Ranking da Lua 🌒</SectionLabel>
-        <div className="flex-1" />
-        {!editing && (
-          <button
-            type="button"
-            onClick={() => {
-              setNickDraft(profile?.nickname ?? '')
-              setShowDraft(profile?.show_in_ranking ?? false)
-              setEditing(true)
-            }}
-            className="text-xs text-faint underline bg-transparent border-none cursor-pointer"
-          >
-            editar identidade
-          </button>
-        )}
-      </div>
+      <SectionLabel>Ranking da Lua 🌒</SectionLabel>
 
-      {editing && (
-        <form
-          onSubmit={saveIdentity}
-          className="border border-gold/20 rounded-xl bg-white/[.02] p-4 mb-4"
-        >
-          <label className="block text-[11px] tracking-wide uppercase text-muted mb-1.5">
-            Nickname exibido no ranking
-          </label>
-          <input
-            value={nickDraft}
-            onChange={(e) => setNickDraft(e.target.value)}
-            placeholder="ex.: Corvo de Saturno"
-            className="w-full box-border bg-white/[.04] border border-gold/25 rounded-lg text-ink text-base p-2.5 mb-3 placeholder:text-faint focus:outline-none focus:border-gold"
-          />
-          <label className="flex items-center gap-2 text-sm mb-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={showDraft}
-              onChange={(e) => setShowDraft(e.target.checked)}
-            />
-            Aparecer no ranking
-          </label>
-          {saveError && <p className="text-xs text-red mb-2">{saveError}</p>}
-          <div className="flex items-center gap-3">
-            <GoldButton small type="submit" disabled={saving || nickDraft.trim().length < 3}>
-              {saving ? 'Salvando…' : 'Salvar'}
-            </GoldButton>
-            {isOptedIn && (
-              <button
-                type="button"
-                onClick={() => setEditing(false)}
-                className="text-xs text-faint bg-transparent border-none cursor-pointer"
-              >
-                cancelar
-              </button>
-            )}
+      {!hasNickname ? (
+        <p className="text-xs text-faint text-center py-4 leading-relaxed">
+          Define teu nickname na aba Círculo antes de aparecer no ranking.
+        </p>
+      ) : (
+        <Card className="p-4 mb-4 flex items-center gap-3">
+          <div className="flex-1">
+            <div className="text-sm">Aparecer no ranking</div>
+            <div className="text-[11px] text-muted mt-0.5">Exibido como {profile.nickname}</div>
           </div>
-        </form>
+          <input
+            type="checkbox"
+            checked={Boolean(profile.show_in_ranking)}
+            disabled={saving}
+            onChange={(e) => toggleShow(e.target.checked)}
+          />
+        </Card>
       )}
+      {saveError && <p className="text-xs text-red text-center mb-3">{saveError}</p>}
 
       {error && <p className="text-red text-sm text-center py-6">{error}</p>}
 
       {!error && ranking === null && <p className="text-faint text-sm text-center py-10">Carregando…</p>}
 
-      {!error && ranking !== null && !isOptedIn && (
+      {!error && ranking !== null && hasNickname && !isOptedIn && (
         <p className="text-xs text-faint text-center py-4 leading-relaxed">
-          Defina um nickname e ative "aparecer no ranking" para entrar na disputa da tua liga.
+          Ativa "aparecer no ranking" acima para entrar na disputa da tua liga.
         </p>
       )}
 
