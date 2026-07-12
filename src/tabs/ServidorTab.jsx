@@ -62,6 +62,7 @@ export default function ServidorTab() {
   const [editRechargeDays, setEditRechargeDays] = useState(7)
   const [savingEdit, setSavingEdit] = useState(false)
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const [savingVisibility, setSavingVisibility] = useState(false)
 
   async function load() {
     const { data, error } = await supabase.rpc('my_servitors')
@@ -195,6 +196,24 @@ export default function ServidorTab() {
     await Promise.all([load(), refreshProfile()])
   }
 
+  async function toggleVisibility(servitor, nextVisible) {
+    setSavingVisibility(true)
+    const { data, error } = await supabase.rpc('set_servitor_visibility', {
+      p_servitor: servitor.id,
+      p_visible: nextVisible,
+    })
+    setSavingVisibility(false)
+    if (error) {
+      alert(error.message)
+      return
+    }
+    if (data !== 'ok') {
+      alert(data)
+      return
+    }
+    await load()
+  }
+
   async function uploadPhoto(servitor, file) {
     setUploadingPhoto(true)
     const path = `${user.id}/${servitor.id}.jpg`
@@ -309,6 +328,21 @@ export default function ServidorTab() {
             </GoldButton>
           </div>
         </div>
+
+        <Card className="p-4 flex items-center gap-3">
+          <div className="flex-1">
+            <div className="text-sm">Visível para amigos</div>
+            <div className="text-[11px] text-muted mt-0.5 leading-relaxed">
+              Oculto, este servidor não aparece no teu perfil visto por amigos.
+            </div>
+          </div>
+          <input
+            type="checkbox"
+            checked={servitor.visible_to_friends}
+            disabled={savingVisibility}
+            onChange={(e) => toggleVisibility(servitor, e.target.checked)}
+          />
+        </Card>
 
         <Card className="p-4">
           {editing ? (
