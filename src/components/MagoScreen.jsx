@@ -77,12 +77,12 @@ export default function MagoScreen({ onClose }) {
         <button
           type="button"
           onClick={onClose}
-          className="bg-transparent border-none text-gold text-sm cursor-pointer pb-4"
+          className="bg-transparent border-none text-gold text-sm cursor-pointer pb-1.5"
         >
           ← Voltar
         </button>
 
-        <div className="flex flex-col items-center text-center py-2 mb-2">
+        <div className="flex flex-col items-center text-center mb-2">
           <AvatarEtereo
             glyph={current.glyph}
             weapon={weaponRow?.shop_items}
@@ -92,7 +92,7 @@ export default function MagoScreen({ onClose }) {
             hasAura={cosmetics.some((c) => c.slug === AURA_SLUG)}
             hasMoonRing={cosmetics.some((c) => c.slug === MOON_RING_SLUG)}
           />
-          <div className="text-lg mt-5">{current.name}</div>
+          <div className="text-lg mt-2">{current.name}</div>
           {cosmeticTitleName && <div className="text-sm text-gold mt-1">{cosmeticTitleName}</div>}
 
           <div className="w-full max-w-[220px] h-[6px] rounded-full bg-white/10 my-3 overflow-hidden">
