@@ -28,7 +28,7 @@ export default function MagoScreen({ onClose }) {
     [equippedItems]
   )
   const weaponRow = useMemo(() => arsenal.find((e) => e.shop_items.kind === 'arma_magica'), [arsenal])
-  const relicRow = useMemo(() => arsenal.find((e) => e.shop_items.kind === 'item_encantado'), [arsenal])
+  const relics = useMemo(() => arsenal.filter((e) => e.shop_items.kind === 'item_encantado'), [arsenal])
 
   useEffect(() => {
     const withImages = arsenal.filter((e) => e.shop_items.image_path)
@@ -86,9 +86,8 @@ export default function MagoScreen({ onClose }) {
           <AvatarEtereo
             glyph={current.glyph}
             weapon={weaponRow?.shop_items}
-            relic={relicRow?.shop_items}
             weaponUrl={weaponRow ? imageUrls[weaponRow.item_id] : null}
-            relicUrl={relicRow ? imageUrls[relicRow.item_id] : null}
+            relics={relics.map((e) => ({ item: e.shop_items, url: imageUrls[e.item_id] }))}
             hasAura={cosmetics.some((c) => c.slug === AURA_SLUG)}
             hasMoonRing={cosmetics.some((c) => c.slug === MOON_RING_SLUG)}
           />

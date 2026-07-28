@@ -159,13 +159,61 @@ export function MoonRingCircle() {
   )
 }
 
+// ── Slots de equipamento ──────────────────────────────────────────────────
+// Único lugar que define onde/como cada slot ancora no avatar. Um item novo
+// só precisa do slot certo na linha do catálogo (shop_items.slot) — nada
+// aqui muda por item, só por slot. `layer: 'behind'` desenha antes da
+// imagem base (fica atrás da figura); qualquer outro valor desenha depois
+// (na frente).
+const SLOT_ANCHORS = {
+  mao: { left: '66%', top: '58%', scale: 1, rotate: -18, layer: 'front' },
+  peito: { left: '50%', top: '50%', scale: 0.9, rotate: 0, layer: 'front' },
+  cintura: { left: '50%', top: '72%', scale: 2.7, rotate: 0, layer: 'front' },
+  atras_cabeca: { left: '50%', top: '16%', scale: 1.3, rotate: 0, layer: 'behind' },
+}
+const FALLBACK_ANCHOR = SLOT_ANCHORS.peito
+const ITEM_GLYPH_FALLBACK = { arma_magica: '🗡', item_encantado: '🜏' }
+const ITEM_BASE_SIZE = 32
+
+function AnchoredItem({ item, url, anchor }) {
+  const size = ITEM_BASE_SIZE * (anchor.scale ?? 1)
+  return (
+    <div
+      className="absolute grid place-items-center"
+      style={{
+        left: anchor.left,
+        top: anchor.top,
+        transform: `translate(-50%, -50%) rotate(${anchor.rotate ?? 0}deg)`,
+      }}
+    >
+      {url ? (
+        <img
+          src={url}
+          alt={item.name}
+          className="object-contain rounded"
+          style={{ width: size, height: size, filter: 'drop-shadow(0 0 6px rgba(201,150,46,.6))' }}
+        />
+      ) : (
+        <span className="text-lg" style={{ filter: 'drop-shadow(0 0 6px rgba(201,150,46,.6))' }}>
+          {ITEM_GLYPH_FALLBACK[item.kind] ?? '❖'}
+        </span>
+      )}
+    </div>
+  )
+}
+
 // ── Avatar ────────────────────────────────────────────────────────────────
 // Palco quadrado: a imagem base ocupa ~80% da largura, deixando 20% de
 // margem para a órbita (anel de cosméticos), que usa 100% do palco e por
 // isso precisa desse respiro para não ser cortada.
-export default function AvatarEtereo({ glyph, weapon, relic, weaponUrl, relicUrl, hasAura, hasMoonRing }) {
+export default function AvatarEtereo({ glyph, weapon, relics = [], weaponUrl, hasAura, hasMoonRing }) {
   const phase = useOrbitPhase(hasMoonRing)
   const dots = useOrbitDots(phase)
+
+  const weaponAnchor = SLOT_ANCHORS[weapon?.slot] ?? SLOT_ANCHORS.mao
+  const relicsWithAnchor = relics.map((r) => ({ ...r, anchor: SLOT_ANCHORS[r.item?.slot] ?? FALLBACK_ANCHOR }))
+  const behindRelics = relicsWithAnchor.filter((r) => r.anchor.layer === 'behind')
+  const frontRelics = relicsWithAnchor.filter((r) => r.anchor.layer !== 'behind')
 
   return (
     <div
@@ -178,6 +226,11 @@ export default function AvatarEtereo({ glyph, weapon, relic, weaponUrl, relicUrl
           <OrbitDotsLayer dots={dots} front={false} />
         </svg>
       )}
+
+      {/* itens de slot "behind" (ex.: atras_cabeca) — atrás da imagem base */}
+      {behindRelics.map((r) => (
+        <AnchoredItem key={r.item.slug ?? r.item.name} item={r.item} url={r.url} anchor={r.anchor} />
+      ))}
 
       {/* base: imagem do mago (fundo transparente, composta normalmente) */}
       <img
@@ -203,45 +256,11 @@ export default function AvatarEtereo({ glyph, weapon, relic, weaponUrl, relicUrl
         {glyph}
       </div>
 
-      {relic && (
-        <div
-          className="absolute grid place-items-center"
-          style={{ left: '50%', top: '40%', transform: 'translate(-50%, -50%)' }}
-        >
-          {relicUrl ? (
-            <img
-              src={relicUrl}
-              alt={relic.name}
-              className="w-8 h-8 object-contain rounded"
-              style={{ filter: 'drop-shadow(0 0 6px rgba(201,150,46,.6))' }}
-            />
-          ) : (
-            <span className="text-lg" style={{ filter: 'drop-shadow(0 0 6px rgba(201,150,46,.6))' }}>
-              🜏
-            </span>
-          )}
-        </div>
-      )}
+      {frontRelics.map((r) => (
+        <AnchoredItem key={r.item.slug ?? r.item.name} item={r.item} url={r.url} anchor={r.anchor} />
+      ))}
 
-      {weapon && (
-        <div
-          className="absolute grid place-items-center"
-          style={{ left: '66%', top: '58%', transform: 'translate(-50%, -50%)' }}
-        >
-          {weaponUrl ? (
-            <img
-              src={weaponUrl}
-              alt={weapon.name}
-              className="w-8 h-8 object-contain rounded"
-              style={{ filter: 'drop-shadow(0 0 6px rgba(201,150,46,.6))' }}
-            />
-          ) : (
-            <span className="text-lg" style={{ filter: 'drop-shadow(0 0 6px rgba(201,150,46,.6))' }}>
-              🗡
-            </span>
-          )}
-        </div>
-      )}
+      {weapon && <AnchoredItem item={weapon} url={weaponUrl} anchor={weaponAnchor} />}
 
       {hasMoonRing && (
         <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full" style={{ overflow: 'visible' }}>
