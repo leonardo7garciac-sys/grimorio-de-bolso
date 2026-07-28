@@ -1,6 +1,19 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 
+const EMAIL_RE = /^(?!\.)(?!.*\.\.)[^\s@]+(?<!\.)@[^\s@]+\.[^\s@]+$/
+const GENERIC_SEND_ERROR = 'Não foi possível enviar o código. Confira o e-mail e tente de novo.'
+
+// error.message às vezes chega como JSON.stringify de um objeto sem
+// campo reconhecido (lib @supabase/auth-js) — ex.: a string literal
+// "{}". Isso é verdadeiro para efeitos de "||", então precisa de
+// checagem própria, não só de vazio.
+function readableAuthError(err) {
+  const msg = err?.message?.trim()
+  if (!msg || msg.startsWith('{')) return GENERIC_SEND_ERROR
+  return msg
+}
+
 export default function LoginScreen() {
   const [email, setEmail] = useState('')
   const [status, setStatus] = useState('idle') // idle | sending | sent | error
@@ -12,17 +25,28 @@ export default function LoginScreen() {
 
   async function handleSubmit(e) {
     e.preventDefault()
+    const trimmedEmail = email.trim()
+    if (!EMAIL_RE.test(trimmedEmail)) {
+      setError('Digite um e-mail válido.')
+      setStatus('error')
+      return
+    }
     setStatus('sending')
     setError('')
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: window.location.origin },
-    })
-    if (error) {
-      setError(error.message)
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email: trimmedEmail,
+        options: { emailRedirectTo: window.location.origin },
+      })
+      if (error) {
+        setError(readableAuthError(error))
+        setStatus('error')
+      } else {
+        setStatus('sent')
+      }
+    } catch (err) {
+      setError(readableAuthError(err))
       setStatus('error')
-    } else {
-      setStatus('sent')
     }
   }
 
@@ -49,22 +73,18 @@ export default function LoginScreen() {
           <div className="text-4xl mb-3 text-gold">🜃</div>
           <h1 className="text-2xl">Grimório de Bolso</h1>
           <p className="text-muted text-sm mt-2 leading-relaxed">
-            Entre com um link mágico enviado ao teu e-mail. Sem senha.
+            Entre com um código de 6 dígitos enviado ao teu e-mail. Sem senha.
           </p>
         </div>
 
         {status === 'sent' ? (
           <div className="border border-gold/30 rounded-xl bg-white/5 p-5">
             <p className="text-sm leading-relaxed text-center">
-              Enviamos um link mágico para <span className="text-gold">{email}</span>.
-              Abre o teu e-mail para entrar.
+              Enviamos um código de 6 dígitos para <span className="text-gold">{email}</span>.
+              Confira o teu e-mail e digite o código abaixo.
             </p>
 
-            <div className="border-t border-white/10 mt-4 pt-4">
-              <p className="text-xs text-muted text-center mb-3 leading-relaxed">
-                Instalou o app na tela de início do iPhone? O link abre no Safari, não no app
-                instalado — usa o código de 6 dígitos do mesmo e-mail em vez disso.
-              </p>
+            <div className="mt-4">
               <form onSubmit={handleVerifyCode} className="space-y-2.5">
                 <input
                   type="text"
@@ -73,7 +93,7 @@ export default function LoginScreen() {
                   maxLength={6}
                   value={code}
                   onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
-                  placeholder="ou digita o código de 6 dígitos do e-mail"
+                  placeholder="código de 6 dígitos"
                   className="w-full box-border bg-white/5 border border-gold/30 rounded-lg text-ink text-base px-3 py-2.5 text-center tracking-[0.3em] placeholder:tracking-normal placeholder:text-faint focus:outline-none focus:border-gold"
                 />
                 {codeError && <p className="text-xs text-red text-center">{codeError}</p>}
@@ -117,7 +137,7 @@ export default function LoginScreen() {
               disabled={status === 'sending' || !email}
               className="w-full rounded-lg py-3 text-sm tracking-wide bg-gradient-to-r from-gold to-gold-light text-navy-deep disabled:opacity-50 disabled:cursor-default cursor-pointer"
             >
-              {status === 'sending' ? 'Enviando…' : 'Enviar link mágico'}
+              {status === 'sending' ? 'Enviando…' : 'Enviar código'}
             </button>
           </form>
         )}
