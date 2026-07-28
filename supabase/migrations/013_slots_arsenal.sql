@@ -65,6 +65,8 @@ update public.shop_items set slot = 'atras_cabeca' where slug in (
 -- exclusividade passa a valer só para a MESMA mão — permitindo duas
 -- armas ao mesmo tempo, uma por mão.
 -- ───────────────────────────────────────────────────────────────────
+drop function if exists public.equip_item(uuid, boolean);
+
 create or replace function public.equip_item(p_item uuid, p_equip boolean, p_hand text default null)
 returns text
 language plpgsql
