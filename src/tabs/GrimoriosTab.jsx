@@ -244,8 +244,32 @@ export default function GrimoriosTab() {
                 <div className="flex items-center gap-3 px-4 pt-3.5 pb-1.5">
                   <span className="w-1 h-[26px] rounded flex-shrink-0" style={{ background: g.hue }} />
                   <span className="flex-1 text-[15px]">{g.title}</span>
-                  {locked && <span className="text-xs text-gold">🗝 Círculo</span>}
+                  {locked && g.subscriber_included && <span className="text-xs text-gold">🗝 Círculo</span>}
                 </div>
+                {locked && g.checkout_url && (
+                  <div className="px-4 pb-1.5 flex justify-end">
+                    {g.subscriber_included ? (
+                      <a
+                        href={g.checkout_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[11px] text-faint underline decoration-dotted"
+                      >
+                        ou comprar avulso
+                      </a>
+                    ) : (
+                      <a
+                        href={g.checkout_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="bg-transparent border rounded-lg px-3 py-1.5 text-xs tracking-wide"
+                        style={{ borderColor: g.hue, color: g.hue }}
+                      >
+                        Comprar na Hotmart
+                      </a>
+                    )}
+                  </div>
+                )}
                 <div className="px-4 pb-2.5">
                   {untracked.map((s) => (
                     <div key={s.id} className="flex items-center gap-3 py-2.5 px-2 border-t border-white/5">
