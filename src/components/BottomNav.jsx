@@ -24,7 +24,7 @@ export default function BottomNav({ tab, onChange, paying, servitorsLowCount = 0
                 </span>
               )}
             </div>
-            <div className="text-[8px] tracking-wide mt-1 uppercase whitespace-nowrap">
+            <div className="text-[9px] tracking-tight mt-1 uppercase whitespace-nowrap">
               {t.label}
               {t.premium && !paying ? ' 🗝' : ''}
             </div>

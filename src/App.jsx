@@ -6,7 +6,8 @@ import Header from './components/Header'
 import BottomNav from './components/BottomNav'
 import PremiumGate from './components/PremiumGate'
 import MagoScreen from './components/MagoScreen'
-import { TABS } from './lib/tabs'
+import GroupedTab from './components/GroupedTab'
+import { TABS, TAB_GROUPS, LEGACY_ROUTES } from './lib/tabs'
 import GrimoriosTab from './tabs/GrimoriosTab'
 import QuestsTab from './tabs/QuestsTab'
 import TesouroTab from './tabs/TesouroTab'
@@ -19,21 +20,40 @@ import CirculoTab from './tabs/CirculoTab'
 
 const TAB_COMPONENTS = {
   grimoires: GrimoriosTab,
+  servidor: ServidorTab,
+  circle: CirculoTab,
+}
+
+const SECTION_COMPONENTS = {
   quests: QuestsTab,
   treasure: TesouroTab,
   bestiary: BestiarioTab,
   library: AcervoTab,
   forum: ForumTab,
   ranking: RankingTab,
-  servidor: ServidorTab,
-  circle: CirculoTab,
 }
 
 function App() {
   const { user, loading: authLoading } = useAuth()
   const { paying, servitorsLowCount, loading: profileLoading } = useProfile()
   const [tab, setTab] = useState('grimoires')
+  const [section, setSection] = useState(null)
   const [showProfile, setShowProfile] = useState(false)
+
+  // Ponto único de navegação entre abas: aceita tanto os ids novos
+  // (aba agrupada, cai na primeira seção) quanto os ids de antes do
+  // agrupamento (LEGACY_ROUTES), redirecionando para a aba certa já
+  // com a seção certa selecionada.
+  function navigate(id) {
+    const legacy = LEGACY_ROUTES[id]
+    if (legacy) {
+      setTab(legacy.tab)
+      setSection(legacy.section)
+      return
+    }
+    setTab(id)
+    setSection(TAB_GROUPS[id] ? TAB_GROUPS[id][0].id : null)
+  }
 
   if (authLoading) {
     return (
@@ -49,6 +69,7 @@ function App() {
 
   const activeTab = TABS.find((t) => t.id === tab)
   const gated = activeTab.premium && !paying
+  const group = TAB_GROUPS[tab]
   const TabContent = TAB_COMPONENTS[tab]
 
   return (
@@ -60,12 +81,19 @@ function App() {
             <p className="text-faint text-sm text-center py-10">Carregando…</p>
           ) : gated ? (
             <PremiumGate />
+          ) : group ? (
+            <GroupedTab
+              sections={group}
+              section={section}
+              onSectionChange={setSection}
+              components={SECTION_COMPONENTS}
+            />
           ) : (
             <TabContent />
           )}
         </main>
       </div>
-      <BottomNav tab={tab} onChange={setTab} paying={paying} servitorsLowCount={servitorsLowCount} />
+      <BottomNav tab={tab} onChange={navigate} paying={paying} servitorsLowCount={servitorsLowCount} />
       {showProfile && <MagoScreen onClose={() => setShowProfile(false)} />}
     </div>
   )
