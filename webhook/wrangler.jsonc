@@ -1,0 +1,12 @@
+{
+  "name": "grimorio-webhook-hotmart",
+  "main": "src/index.js",
+  "compatibility_date": "2026-07-11",
+  "vars": {
+    "SUPABASE_URL": "https://hkjpuwowtuobqgkghzsp.supabase.co",
+    "CIRCULO_PRODUCT_ID": "8211028"
+  },
+  "routes": [
+    { "pattern": "webhook.daily-arcane.com", "custom_domain": true }
+  ]
+}
