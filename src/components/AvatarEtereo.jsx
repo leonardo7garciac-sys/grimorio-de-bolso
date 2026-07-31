@@ -162,44 +162,80 @@ export function MoonRingCircle() {
 // ── Slots de equipamento ──────────────────────────────────────────────────
 // Único lugar que define onde/como cada slot ancora no avatar. Um item novo
 // só precisa do slot certo na linha do catálogo (shop_items.slot) — nada
-// aqui muda por item, só por slot. `layer: 'behind'` desenha antes da
-// imagem base (fica atrás da figura); qualquer outro valor desenha depois
-// (na frente).
+// aqui muda por item, só por slot.
+//
+// `layer: 'behind'` desenha antes da imagem base (fica atrás da figura);
+// qualquer outro valor desenha depois (na frente).
+//
+// `sizeAxis` + `size`: tamanho é medida relativa, em % do palco (o mesmo
+// palco quadrado de left/top) — nunca px absoluto, senão o item não
+// acompanha a tela. `sizeAxis: 'height'` fixa a altura e deixa a largura
+// livre (width: auto); `'width'` faz o inverso. Cada slot escolhe o eixo
+// que faz sentido pra forma típica do item (ex.: cintura é 'width'
+// porque a corda é larga, não alta).
+//
+// `grip`: ponto do sprite que encosta no âncora (left/top) E pivô da
+// rotação (CSS transform-origin) — o mesmo ponto serve pras duas
+// coisas. É uma % da ALTURA do próprio sprite, de cima pra baixo: 0 =
+// topo, 50 = centro, 100 = base. X fica sempre centralizado (50%). Um
+// item pode fugir à regra do slot — ver ITEM_OVERRIDE abaixo.
 const SLOT_ANCHORS = {
-  mao: { left: '66%', top: '58%', scale: 1, rotate: -18, layer: 'front' },
-  peito: { left: '50%', top: '50%', scale: 0.9, rotate: 0, layer: 'front' },
-  cintura: { left: '50%', top: '72%', scale: 2.7, rotate: 0, layer: 'front' },
-  atras_cabeca: { left: '50%', top: '16%', scale: 1.3, rotate: 0, layer: 'behind' },
+  mao: { left: '66%', top: '58%', rotate: -18, layer: 'front', grip: 100, sizeAxis: 'height', size: 34 },
+  peito: { left: '50%', top: '50%', rotate: 0, layer: 'front', grip: 50, sizeAxis: 'height', size: 18 },
+  cintura: { left: '50%', top: '72%', rotate: 0, layer: 'front', grip: 50, sizeAxis: 'width', size: 35 },
+  atras_cabeca: { left: '50%', top: '16%', rotate: 0, layer: 'behind', grip: 50, sizeAxis: 'height', size: 22 },
 }
 const FALLBACK_ANCHOR = SLOT_ANCHORS.peito
+
+// Exceções por item ao padrão do próprio slot (grip, size e/ou rotate).
+// Hoje:
+//  - athame e varinha: a arte tem pomo/remate abaixo da empunhadura,
+//    então o punho real fica um pouco acima da base do sprite — a
+//    proporção varia por item, por isso o valor é por slug, não pelo
+//    slot "mao" inteiro.
+//  - turíbulo: pende de uma corrente segurada pela mão, então gira a
+//    partir do topo (grip 0), não da base.
+//  - cajado e cálice: tamanho de "mao" (34% de altura) não serve pra
+//    eles — o cajado é bem mais alto, o cálice bem menor.
+// Itens de mão sem entrada aqui (ou sem o campo específico) usam o
+// padrão do slot (grip 100, rotate -18 — comportamento de antes desta
+// exceção existir).
+const ITEM_OVERRIDE = {
+  'athame-de-obsidiana': { grip: 46 },
+  'varinha-de-amendoeira-branca': { grip: 50 },
+  'turibulo-do-incenso-eterno': { grip: 0 },
+  'cajado-do-carvalho-antigo': { size: 45 },
+  'calice-de-mercurio': { size: 15 },
+}
+
 const ITEM_GLYPH_FALLBACK = { arma_magica: '🗡', item_encantado: '🜏' }
-const ITEM_BASE_SIZE = 32
 
 function AnchoredItem({ item, url, anchor }) {
-  const size = ITEM_BASE_SIZE * (anchor.scale ?? 1)
-  return (
-    <div
-      className="absolute grid place-items-center"
-      style={{
-        left: anchor.left,
-        top: anchor.top,
-        transform: `translate(-50%, -50%) rotate(${anchor.rotate ?? 0}deg)`,
-      }}
-    >
-      {url ? (
-        <img
-          src={url}
-          alt={item.name}
-          className="object-contain rounded"
-          style={{ width: size, height: size, filter: 'drop-shadow(0 0 6px rgba(201,150,46,.6))' }}
-        />
-      ) : (
-        <span className="text-lg" style={{ filter: 'drop-shadow(0 0 6px rgba(201,150,46,.6))' }}>
-          {ITEM_GLYPH_FALLBACK[item.kind] ?? '❖'}
-        </span>
-      )}
-    </div>
-  )
+  const override = ITEM_OVERRIDE[item.slug] ?? {}
+  const grip = override.grip ?? anchor.grip ?? 50
+  const size = override.size ?? anchor.size
+  const rotate = override.rotate ?? anchor.rotate ?? 0
+  const flip = item.hand === 'mao_esquerda'
+  const boxSize =
+    anchor.sizeAxis === 'width' ? { width: `${size}%`, height: 'auto' } : { height: `${size}%`, width: 'auto' }
+  const positionStyle = {
+    position: 'absolute',
+    left: anchor.left,
+    top: anchor.top,
+    transform: `translate(-50%, -${grip}%) rotate(${rotate}deg) scaleX(${flip ? -1 : 1})`,
+    transformOrigin: `50% ${grip}%`,
+    filter: 'drop-shadow(0 0 6px rgba(201,150,46,.6))',
+  }
+
+  if (!url) {
+    return (
+      <span className="text-lg" style={positionStyle}>
+        {ITEM_GLYPH_FALLBACK[item.kind] ?? '❖'}
+      </span>
+    )
+  }
+
+  return <img src={url} alt={item.name} className="object-contain rounded" style={{ ...positionStyle, ...boxSize }} />
 }
 
 // ── Avatar ────────────────────────────────────────────────────────────────

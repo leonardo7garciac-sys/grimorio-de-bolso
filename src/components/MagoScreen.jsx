@@ -17,6 +17,7 @@ function formatDate(iso) {
 export default function MagoScreen({ onClose }) {
   const { profile, titles, balance, circleExpiry, cosmeticTitleName, equippedItems, refresh } = useProfile()
   const [imageUrls, setImageUrls] = useState({})
+  const [equippedImageUrls, setEquippedImageUrls] = useState({})
   const [busyId, setBusyId] = useState(null)
 
   const arsenal = useMemo(
@@ -41,6 +42,30 @@ export default function MagoScreen({ onClose }) {
       })
     ).then((entries) => {
       if (!cancelled) setImageUrls(Object.fromEntries(entries))
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [arsenal])
+
+  // Arte específica para renderização sobre o avatar — cai para
+  // imageUrls (vitrine) quando o item não tem image_path_equipped.
+  useEffect(() => {
+    const withEquippedImages = arsenal.filter((e) => e.shop_items.image_path_equipped)
+    if (withEquippedImages.length === 0) {
+      setEquippedImageUrls({})
+      return
+    }
+    let cancelled = false
+    Promise.all(
+      withEquippedImages.map(async (e) => {
+        const { data } = await supabase.storage
+          .from('loja')
+          .createSignedUrl(e.shop_items.image_path_equipped, 3600)
+        return [e.item_id, data?.signedUrl ?? null]
+      })
+    ).then((entries) => {
+      if (!cancelled) setEquippedImageUrls(Object.fromEntries(entries))
     })
     return () => {
       cancelled = true
@@ -85,9 +110,12 @@ export default function MagoScreen({ onClose }) {
         <div className="flex flex-col items-center text-center mb-2">
           <AvatarEtereo
             glyph={current.glyph}
-            weapon={weaponRow?.shop_items}
-            weaponUrl={weaponRow ? imageUrls[weaponRow.item_id] : null}
-            relics={relics.map((e) => ({ item: e.shop_items, url: imageUrls[e.item_id] }))}
+            weapon={weaponRow ? { ...weaponRow.shop_items, hand: weaponRow.hand } : null}
+            weaponUrl={weaponRow ? equippedImageUrls[weaponRow.item_id] ?? imageUrls[weaponRow.item_id] : null}
+            relics={relics.map((e) => ({
+              item: { ...e.shop_items, hand: e.hand },
+              url: equippedImageUrls[e.item_id] ?? imageUrls[e.item_id],
+            }))}
             hasAura={cosmetics.some((c) => c.slug === AURA_SLUG)}
             hasMoonRing={cosmetics.some((c) => c.slug === MOON_RING_SLUG)}
           />

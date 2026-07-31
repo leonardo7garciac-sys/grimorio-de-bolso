@@ -40,7 +40,7 @@ export function ProfileProvider({ children }) {
       supabase.rpc('my_balance'),
       supabase.rpc('am_i_paying'),
       supabase.rpc('my_circle_expiry'),
-      supabase.from('user_items').select('item_id, shop_items(*)').eq('equipped', true),
+      supabase.from('user_items').select('item_id, hand, shop_items(*)').eq('equipped', true),
       supabase.rpc('servitors_low_charge_count'),
     ])
 
