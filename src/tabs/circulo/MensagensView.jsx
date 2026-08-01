@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
-import { useProfile } from '../../hooks/useProfile'
 import { Card, SectionLabel, GoldButton, GhostButton } from '../../components/ui'
 
 function formatDate(iso) {
@@ -16,17 +15,15 @@ function formatDate(iso) {
 // Estado de elegibilidade para enviar mensagens, na ordem em que
 // can_send_dm() do banco avalia as condições (amizade já é garantida
 // pelo próprio fluxo de navegação — só se abre thread com amigo).
-function eligibilityState(eligibility, paying) {
+function eligibilityState(eligibility) {
   if (!eligibility) return 'loading'
   if (eligibility.suspendedUntil) return 'suspended'
-  if (!paying) return 'not_paying'
   if (eligibility.guideline && !eligibility.accepted) return 'guidelines'
   return 'ok'
 }
 
 export default function MensagensView() {
   const { user } = useAuth()
-  const { paying } = useProfile()
 
   const [threads, setThreads] = useState(null)
   const [error, setError] = useState('')
@@ -34,6 +31,7 @@ export default function MensagensView() {
   const [messages, setMessages] = useState(null)
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
+  const [sendError, setSendError] = useState('')
 
   const [eligibility, setEligibility] = useState(null)
   const [accepting, setAccepting] = useState(false)
@@ -90,6 +88,7 @@ export default function MensagensView() {
   async function openFriend(friendId, friendNickname) {
     setOpenThread({ friend_id: friendId, friend_nickname: friendNickname })
     setMessages(null)
+    setSendError('')
     setPickingFriend(false)
     await Promise.all([loadEligibility(), loadMessages(friendId)])
 
@@ -108,21 +107,69 @@ export default function MensagensView() {
     setFriendOptions((data ?? []).filter((f) => f.status === 'aceita'))
   }
 
+  // O insert em dm_messages pode falhar por 4 motivos: não-amigo (a
+  // amizade pode ter sido desfeita depois que a thread foi aberta),
+  // sem aceite das diretrizes, suspenso, ou um erro real de banco. A
+  // RLS só devolve "política violada" — reconsultamos para descobrir
+  // qual dos três motivos conhecidos se aplica antes de admitir que é
+  // um erro real.
+  async function diagnoseSendFailure(friendId) {
+    const [{ data: suspendedUntil }, { data: friendships }] = await Promise.all([
+      supabase.rpc('my_messaging_suspension'),
+      supabase.rpc('my_friendships'),
+    ])
+    if (suspendedUntil) return 'suspended'
+
+    const rel = (friendships ?? []).find((f) => f.friend_id === friendId)
+    if (!rel || rel.status !== 'aceita') return 'not_friend'
+
+    const { data: guideline } = await supabase
+      .from('forum_guidelines')
+      .select('version')
+      .order('version', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (guideline) {
+      const { data: acc } = await supabase
+        .from('guideline_acceptances')
+        .select('version')
+        .eq('version', guideline.version)
+      if ((acc ?? []).length === 0) return 'guidelines'
+    }
+    return null
+  }
+
   async function send() {
     const body = draft.trim()
     if (!body || !openThread) return
     setSending(true)
+    setSendError('')
     const { error } = await supabase
       .from('dm_messages')
       .insert({ sender_id: user.id, recipient_id: openThread.friend_id, body })
-    setSending(false)
-    if (error) {
-      alert(error.message)
+    if (!error) {
+      setSending(false)
+      setDraft('')
+      await loadMessages(openThread.friend_id)
+      await loadThreads()
       return
     }
-    setDraft('')
-    await loadMessages(openThread.friend_id)
-    await loadThreads()
+
+    setSending(false)
+    const reason = await diagnoseSendFailure(openThread.friend_id)
+    if (reason === 'not_friend') {
+      alert('Vocês não são mais amigos — a mensagem não foi enviada.')
+      setOpenThread(null)
+      await loadThreads()
+      return
+    }
+    if (reason === 'suspended' || reason === 'guidelines') {
+      // o painel de elegibilidade assume o aviso certo (suspenso ou
+      // diretrizes pendentes) assim que recarregado.
+      await loadEligibility()
+      return
+    }
+    setSendError(error.message)
   }
 
   async function acceptGuidelines() {
@@ -171,7 +218,7 @@ export default function MensagensView() {
 
   // ── thread aberta ──
   if (openThread) {
-    const state = eligibilityState(eligibility, paying)
+    const state = eligibilityState(eligibility)
     return (
       <>
         <button
@@ -234,10 +281,6 @@ export default function MensagensView() {
           </p>
         )}
 
-        {state === 'not_paying' && (
-          <p className="text-xs text-red text-center py-3">Enviar mensagens exige um passe do Círculo ativo.</p>
-        )}
-
         {state === 'guidelines' && (
           <Card className="p-4 mt-3">
             <div className="text-sm mb-2">Diretrizes do Círculo</div>
@@ -253,17 +296,20 @@ export default function MensagensView() {
         )}
 
         {state === 'ok' && (
-          <div className="flex gap-2 mt-3 sticky bottom-0 bg-navy-deep pt-2">
-            <textarea
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              placeholder="Escreve uma mensagem…"
-              rows={2}
-              className="flex-1 min-w-0 box-border bg-white/[.04] border border-gold/25 rounded-lg text-ink text-base p-2.5 resize-none placeholder:text-faint focus:outline-none focus:border-gold"
-            />
-            <GoldButton small disabled={sending || !draft.trim()} onClick={send}>
-              {sending ? '…' : 'Enviar'}
-            </GoldButton>
+          <div className="mt-3 sticky bottom-0 bg-navy-deep pt-2">
+            {sendError && <p className="text-xs text-red mb-1.5">{sendError}</p>}
+            <div className="flex gap-2">
+              <textarea
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                placeholder="Escreve uma mensagem…"
+                rows={2}
+                className="flex-1 min-w-0 box-border bg-white/[.04] border border-gold/25 rounded-lg text-ink text-base p-2.5 resize-none placeholder:text-faint focus:outline-none focus:border-gold"
+              />
+              <GoldButton small disabled={sending || !draft.trim()} onClick={send}>
+                {sending ? '…' : 'Enviar'}
+              </GoldButton>
+            </div>
           </div>
         )}
       </>
