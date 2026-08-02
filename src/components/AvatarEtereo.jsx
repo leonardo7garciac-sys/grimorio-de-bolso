@@ -179,63 +179,171 @@ export function MoonRingCircle() {
 // coisas. É uma % da ALTURA do próprio sprite, de cima pra baixo: 0 =
 // topo, 50 = centro, 100 = base. X fica sempre centralizado (50%). Um
 // item pode fugir à regra do slot — ver ITEM_OVERRIDE abaixo.
+//
+// `zIndex`: empilhamento explícito entre slots "front" — a mão (item
+// empunhado) sempre por cima de peito/cintura, já que ela pode ocupar
+// parte do mesmo espaço visual. `slot`: identifica o slot pro próprio
+// AnchoredItem (ex.: decidir se desenha a sombra de grip).
 const SLOT_ANCHORS = {
-  mao: { left: '66%', top: '58%', rotate: -18, layer: 'front', grip: 100, sizeAxis: 'height', size: 34 },
-  peito: { left: '50%', top: '50%', rotate: 0, layer: 'front', grip: 50, sizeAxis: 'height', size: 18 },
-  cintura: { left: '50%', top: '72%', rotate: 0, layer: 'front', grip: 50, sizeAxis: 'width', size: 35 },
-  atras_cabeca: { left: '50%', top: '16%', rotate: 0, layer: 'behind', grip: 50, sizeAxis: 'height', size: 22 },
+  mao: { slot: 'mao', left: '66%', top: '71%', rotate: -18, layer: 'front', grip: 100, sizeAxis: 'height', size: 34, zIndex: 3 },
+  peito: { slot: 'peito', left: '50%', top: '60%', rotate: 0, layer: 'front', grip: 50, sizeAxis: 'height', size: 14, zIndex: 2 },
+  cintura: { slot: 'cintura', left: '50%', top: '72%', rotate: 0, layer: 'front', grip: 50, sizeAxis: 'width', size: 35, zIndex: 2 },
+  atras_cabeca: { slot: 'atras_cabeca', left: '50%', top: '16%', rotate: 0, layer: 'behind', grip: 50, sizeAxis: 'height', size: 22, zIndex: 1 },
 }
 const FALLBACK_ANCHOR = SLOT_ANCHORS.peito
 
-// Exceções por item ao padrão do próprio slot (grip, size e/ou rotate).
-// Hoje:
+// Exceções por item ao padrão do próprio slot (grip, size, rotate,
+// filter e/ou flipX). Hoje:
 //  - athame e varinha: a arte tem pomo/remate abaixo da empunhadura,
 //    então o punho real fica um pouco acima da base do sprite — a
 //    proporção varia por item, por isso o valor é por slug, não pelo
 //    slot "mao" inteiro.
 //  - turíbulo: pende de uma corrente segurada pela mão, então gira a
-//    partir do topo (grip 0), não da base.
+//    partir de perto do topo, não da base; rotate 0 porque, pendurado,
+//    fica a prumo — herdar o -18 do slot varreria o corpo do incensário
+//    para o lado.
 //  - cajado e cálice: tamanho de "mao" (34% de altura) não serve pra
 //    eles — o cajado é bem mais alto, o cálice bem menor.
+//  - filter: CSS filter aplicado só na imagem do item (não na sombra do
+//    grip), pra ajuste pontual de cor/brilho por peça.
+//  - flipX: espelhamento horizontal fixo do sprite (troca base/ponta),
+//    independente do espelhamento por mão do avatar — os dois fatores
+//    multiplicam (ver scaleXFactor em AnchoredItem), não se substituem.
+//  - offsetX: pontos percentuais do palco somados ao left do slot, fora
+//    da string de transform — desloca sempre na horizontal da TELA,
+//    sem herdar o rotate/scaleX do próprio item.
 // Itens de mão sem entrada aqui (ou sem o campo específico) usam o
 // padrão do slot (grip 100, rotate -18 — comportamento de antes desta
 // exceção existir).
 const ITEM_OVERRIDE = {
-  'athame-de-obsidiana': { grip: 46 },
-  'varinha-de-amendoeira-branca': { grip: 50 },
-  'turibulo-do-incenso-eterno': { grip: 0 },
+  'athame-de-obsidiana': { grip: 78, size: 39, offsetX: 2 },
+  // flipX + rotate: scaleX é aplicado antes do rotate (ordem da lista em
+  // transform, da direita pra esquerda sobre o ponto), então rotacionar
+  // o sprite já espelhado por +r equivale a rotacionar o original por -r
+  // e espelhar o resultado inteiro -- as duas inversões se cancelam, e a
+  // convenção do slot (positivo = ponta pra direita) continua valendo.
+  'varinha-de-amendoeira-branca': { grip: 82, flipX: true, rotate: 3, offsetX: -2 },
+  'turibulo-do-incenso-eterno': { grip: 20, rotate: 0 },
   'cajado-do-carvalho-antigo': { size: 45 },
-  'calice-de-mercurio': { size: 15 },
+  'calice-de-mercurio': { size: 24, grip: 68, filter: 'saturate(1.35) brightness(1.12)', offsetX: 2 },
+  'pentaculo-de-salomao': { filter: 'saturate(1.4) brightness(1.25)' },
 }
 
 const ITEM_GLYPH_FALLBACK = { arma_magica: '🗡', item_encantado: '🜏' }
+
+// Sombra de "mão sobre o item": faixa escura que acompanha o contorno do
+// item (mask-image no próprio sprite, então só pinta em cima de pixel
+// opaco) centrada no grip -- o mesmo ponto onde a mão do avatar encosta.
+// Só faz sentido no slot "mao" -- peito/cintura/atrás da cabeça não têm
+// mão cobrindo a peça. Largura em % da altura do sprite: a mão ocupa
+// ~10% do palco contra 34% do item de mão, por isso ~30% cobre o que a
+// mão de fato tapa sem escurecer a peça inteira. Os stops podem cair
+// fora de 0-100% (ex.: turíbulo com grip perto do topo) -- o navegador
+// simplesmente corta o gradiente no limite da caixa, sem precisar de
+// caso especial aqui.
+const GRIP_SHADOW_HEIGHT_PCT = 60
+const GRIP_SHADOW_INTENSITY = 1
+
+function gripShadowGradient(grip, bandPct) {
+  const half = bandPct / 2
+  return `linear-gradient(to bottom, transparent ${grip - half}%, rgba(0,0,0,${GRIP_SHADOW_INTENSITY}) ${grip}%, transparent ${grip + half}%)`
+}
+
+// Halo dourado dos itens: no slot "mao" ele é reduzido (metade do blur e
+// da opacidade, tunável em HAND_ITEM_GLOW_SCALE) -- no valor cheio o halo
+// empurra a peça pra frente e briga com o efeito de estar sendo segurada.
+// Outros slots mantêm o brilho original.
+const ITEM_GLOW_BLUR_PX = 6
+const ITEM_GLOW_ALPHA = 0.6
+const HAND_ITEM_GLOW_SCALE = 0.5
+
+function itemGlowFilter(isHandSlot) {
+  const scale = isHandSlot ? HAND_ITEM_GLOW_SCALE : 1
+  return `drop-shadow(0 0 ${ITEM_GLOW_BLUR_PX * scale}px rgba(201,150,46,${ITEM_GLOW_ALPHA * scale}))`
+}
+
+// Camada de "dedos por cima do item": segunda cópia da imagem do avatar,
+// com mix-blend-mode: screen (só os filamentos claros pintam -- o fundo
+// escuro do avatar some) e recortada por um mask-image radial-gradient
+// centrado no âncora da mão. Raio e suavidade tunáveis abaixo; ambos em
+// % do palco, que é sempre quadrado (aspectRatio 1/1), então % de
+// largura e de altura valem o mesmo raio físico nos dois eixos.
+const HAND_OVERLAY_RADIUS_PCT = 9
+const HAND_OVERLAY_EDGE_SOFTNESS_PCT = 5
+
+function handOverlayMask(anchor) {
+  const inner = Math.max(HAND_OVERLAY_RADIUS_PCT - HAND_OVERLAY_EDGE_SOFTNESS_PCT, 0)
+  return `radial-gradient(circle at ${anchor.left} ${anchor.top}, black 0%, black ${inner}%, transparent ${HAND_OVERLAY_RADIUS_PCT}%)`
+}
 
 function AnchoredItem({ item, url, anchor }) {
   const override = ITEM_OVERRIDE[item.slug] ?? {}
   const grip = override.grip ?? anchor.grip ?? 50
   const size = override.size ?? anchor.size
   const rotate = override.rotate ?? anchor.rotate ?? 0
-  const flip = item.hand === 'mao_esquerda'
-  const boxSize =
-    anchor.sizeAxis === 'width' ? { width: `${size}%`, height: 'auto' } : { height: `${size}%`, width: 'auto' }
-  const positionStyle = {
+  // Espelhamento por mão do avatar e espelhamento fixo do override (troca
+  // base/ponta do sprite) são fatores independentes -- multiplicam, não se
+  // substituem, então os dois ativos ao mesmo tempo se cancelam de volta a 1.
+  const handFlip = item.hand === 'mao_esquerda' ? -1 : 1
+  const overrideFlip = override.flipX ? -1 : 1
+  const scaleXFactor = handFlip * overrideFlip
+  // offsetX soma no left, fora da string de transform -- assim o
+  // deslocamento é sempre horizontal na tela, sem herdar rotate/scaleX
+  // do próprio item (que giraria/espelharia o deslocamento junto).
+  const left = override.offsetX ? `calc(${anchor.left} + ${override.offsetX}%)` : anchor.left
+  const transformStyle = {
     position: 'absolute',
-    left: anchor.left,
+    left,
     top: anchor.top,
-    transform: `translate(-50%, -${grip}%) rotate(${rotate}deg) scaleX(${flip ? -1 : 1})`,
+    transform: `translate(-50%, -${grip}%) rotate(${rotate}deg) scaleX(${scaleXFactor})`,
     transformOrigin: `50% ${grip}%`,
-    filter: 'drop-shadow(0 0 6px rgba(201,150,46,.6))',
+    zIndex: anchor.zIndex,
   }
 
   if (!url) {
     return (
-      <span className="text-lg" style={positionStyle}>
+      <span className="text-lg" style={transformStyle}>
         {ITEM_GLYPH_FALLBACK[item.kind] ?? '❖'}
       </span>
     )
   }
 
-  return <img src={url} alt={item.name} className="object-contain rounded" style={{ ...positionStyle, ...boxSize }} />
+  // O wrapper carrega a rotação; a imagem e a sombra são filhas dele, na
+  // mesma caixa, então giram e flipam juntas. sizeProp fica em % (mesma
+  // conta de antes) e o outro eixo em 'auto' -- só que agora o 'auto' é
+  // resolvido pela própria img (elemento substituído, preserva aspecto),
+  // e o wrapper (sem tamanho próprio) encolhe exatamente para caber nela.
+  const sizeProp = anchor.sizeAxis === 'width' ? 'width' : 'height'
+  const otherProp = sizeProp === 'width' ? 'height' : 'width'
+  const wrapperStyle = { ...transformStyle, [sizeProp]: `${size}%`, [otherProp]: 'auto' }
+  const fillStyle = { [sizeProp]: '100%', [otherProp]: 'auto', display: 'block' }
+  const imgFilter = [override.filter, itemGlowFilter(anchor.slot === 'mao')].filter(Boolean).join(' ')
+
+  return (
+    <div style={wrapperStyle}>
+      <img
+        src={url}
+        alt={item.name}
+        className="object-contain rounded"
+        style={{ ...fillStyle, filter: imgFilter }}
+      />
+      {anchor.slot === 'mao' && (
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            backgroundImage: gripShadowGradient(grip, GRIP_SHADOW_HEIGHT_PCT),
+            WebkitMaskImage: `url(${url})`,
+            maskImage: `url(${url})`,
+            WebkitMaskSize: '100% 100%',
+            maskSize: '100% 100%',
+            WebkitMaskRepeat: 'no-repeat',
+            maskRepeat: 'no-repeat',
+          }}
+        />
+      )}
+    </div>
+  )
 }
 
 // ── Avatar ────────────────────────────────────────────────────────────────
@@ -297,6 +405,34 @@ export default function AvatarEtereo({ glyph, weapon, relics = [], weaponUrl, ha
       ))}
 
       {weapon && <AnchoredItem item={weapon} url={weaponUrl} anchor={weaponAnchor} />}
+
+      {/* dedos do mago por cima do item empunhado -- acima de tudo */}
+      {weapon && (
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            mixBlendMode: 'screen',
+            WebkitMaskImage: handOverlayMask(weaponAnchor),
+            maskImage: handOverlayMask(weaponAnchor),
+            WebkitMaskRepeat: 'no-repeat',
+            maskRepeat: 'no-repeat',
+          }}
+        >
+          <img
+            src="/avatar-mago.webp"
+            alt=""
+            style={{
+              position: 'absolute',
+              left: '50%',
+              top: '50%',
+              width: '80%',
+              height: 'auto',
+              transform: 'translate(-50%, -50%)',
+            }}
+          />
+        </div>
+      )}
 
       {hasMoonRing && (
         <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full" style={{ overflow: 'visible' }}>
