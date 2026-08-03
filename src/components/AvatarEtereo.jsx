@@ -180,13 +180,21 @@ export function MoonRingCircle() {
 // topo, 50 = centro, 100 = base. X fica sempre centralizado (50%). Um
 // item pode fugir à regra do slot — ver ITEM_OVERRIDE abaixo.
 //
-// `zIndex`: empilhamento explícito entre slots "front" — a mão (item
-// empunhado) sempre por cima de peito/cintura, já que ela pode ocupar
-// parte do mesmo espaço visual. `slot`: identifica o slot pro próprio
-// AnchoredItem (ex.: decidir se desenha a sombra de grip).
+// `stackOrder`: prioridade de pintura entre slots do mesmo `layer` — a
+// mão (item empunhado) sempre por cima de peito/cintura, já que ela
+// pode ocupar parte do mesmo espaço visual. NÃO é aplicado como
+// `z-index` CSS: um z-index numérico cria seu próprio grupo de
+// empilhamento, que pinta acima de QUALQUER elemento-irmão com
+// z-index:auto (como a metade "da frente" do anel da Moldura Lunar,
+// que precisa poder passar por cima dos itens equipados assim como
+// passa por cima da própria imagem do avatar). Por isso `stackOrder`
+// só decide a ORDEM DENTRO DO ARRAY (ver AvatarEtereo) — a posição no
+// DOM é o que de fato controla a pintura entre irmãos sem z-index.
+// `slot`: identifica o slot pro próprio AnchoredItem (ex.: decidir se
+// desenha a sombra de grip).
 const SLOT_ANCHORS = {
-  mao: { slot: 'mao', left: '66%', top: '71%', rotate: -18, layer: 'front', grip: 100, sizeAxis: 'height', size: 34, zIndex: 3 },
-  peito: { slot: 'peito', left: '50%', top: '60%', rotate: 0, layer: 'front', grip: 50, sizeAxis: 'height', size: 14, zIndex: 2 },
+  mao: { slot: 'mao', left: '66%', top: '71%', rotate: -18, layer: 'front', grip: 100, sizeAxis: 'height', size: 34, stackOrder: 3 },
+  peito: { slot: 'peito', left: '50%', top: '60%', rotate: 0, layer: 'front', grip: 50, sizeAxis: 'height', size: 14, stackOrder: 2 },
   // Corda (primeira peça de cintura com arte real): 1056x873, proporção
   // 1,21 -- larga, ao contrário de todas as outras (altas e estreitas).
   // Ainda assim medida por altura, como o resto, pra manter a mesma
@@ -196,13 +204,13 @@ const SLOT_ANCHORS = {
   // NÓ da corda, não o centro geométrico do sprite -- é o que faz o
   // top abaixo significar "onde fica o nó". Ainda ponto de partida, não
   // calibração visual final.
-  cintura: { slot: 'cintura', left: '50%', top: '93%', rotate: 0, layer: 'front', grip: 62, sizeAxis: 'height', size: 30, zIndex: 2 },
-  atras_cabeca: { slot: 'atras_cabeca', left: '50%', top: '16%', rotate: 0, layer: 'behind', grip: 50, sizeAxis: 'height', size: 22, zIndex: 1 },
+  cintura: { slot: 'cintura', left: '50%', top: '93%', rotate: 0, layer: 'front', grip: 62, sizeAxis: 'height', size: 30, stackOrder: 2 },
+  atras_cabeca: { slot: 'atras_cabeca', left: '50%', top: '16%', rotate: 0, layer: 'behind', grip: 50, sizeAxis: 'height', size: 22, stackOrder: 1 },
   // Cajado preso às costas: grande e na diagonal, surgindo por trás do
   // ombro direito de quem olha. Ponto de partida, sem calibração
   // visual -- ver BACK_CLIP_X/Y abaixo para o recorte que impede a
   // peça de atravessar o tronco translúcido.
-  costas: { slot: 'costas', left: '58%', top: '50%', rotate: 32, layer: 'behind', grip: 50, sizeAxis: 'height', size: 62, zIndex: 1 },
+  costas: { slot: 'costas', left: '58%', top: '50%', rotate: 32, layer: 'behind', grip: 50, sizeAxis: 'height', size: 62, stackOrder: 1 },
 }
 const FALLBACK_ANCHOR = SLOT_ANCHORS.peito
 
@@ -386,13 +394,15 @@ function AnchoredItem({ item, url, anchor }) {
   // deslocamento é sempre horizontal na tela, sem herdar rotate/scaleX
   // do próprio item (que giraria/espelharia o deslocamento junto).
   const left = offsetX ? `calc(${anchor.left} + ${offsetX}%)` : anchor.left
+  // Sem z-index aqui de propósito -- ver o comentário de `stackOrder`
+  // em SLOT_ANCHORS. Um z-index numérico puxaria o item pra cima da
+  // metade "da frente" do anel da Moldura Lunar, que é z-index:auto.
   const transformStyle = {
     position: 'absolute',
     left,
     top: anchor.top,
     transform: `translate(-50%, -${grip}%) rotate(${rotate}deg) scaleX(${scaleXFactor})`,
     transformOrigin: `50% ${grip}%`,
-    zIndex: anchor.zIndex,
   }
 
   // Recorte do slot "costas" (ver backClipXGradient/backClipYGradient):
@@ -492,8 +502,14 @@ export default function AvatarEtereo({ glyph, items = [], hasAura, hasMoonRing }
     ...entry,
     anchor: resolveAnchor(SLOT_ANCHORS[entry.item?.slot] ?? FALLBACK_ANCHOR, entry.item?.hand),
   }))
-  const behindItems = itemsWithAnchor.filter((entry) => entry.anchor.layer === 'behind')
-  const frontItems = itemsWithAnchor.filter((entry) => entry.anchor.layer !== 'behind')
+  // Ordenado por stackOrder (não por z-index -- ver o comentário em
+  // SLOT_ANCHORS): dentro do mesmo layer, quem tem stackOrder maior
+  // entra depois no DOM e por isso pinta por cima, sem precisar de
+  // z-index CSS nenhum. .sort é estável, então empates preservam a
+  // ordem original do array `items`.
+  const byStackOrder = (a, b) => a.anchor.stackOrder - b.anchor.stackOrder
+  const behindItems = itemsWithAnchor.filter((entry) => entry.anchor.layer === 'behind').sort(byStackOrder)
+  const frontItems = itemsWithAnchor.filter((entry) => entry.anchor.layer !== 'behind').sort(byStackOrder)
   // Cada item de mão (podem ser até dois, um por mão) ganha sua própria
   // camada de "dedos por cima" -- mascarada no âncora daquele item específico.
   const handItems = frontItems.filter((entry) => entry.anchor.slot === 'mao')
