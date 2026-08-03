@@ -171,8 +171,8 @@ export function MoonRingCircle() {
 // palco quadrado de left/top) — nunca px absoluto, senão o item não
 // acompanha a tela. `sizeAxis: 'height'` fixa a altura e deixa a largura
 // livre (width: auto); `'width'` faz o inverso. Cada slot escolhe o eixo
-// que faz sentido pra forma típica do item (ex.: cintura é 'width'
-// porque a corda é larga, não alta).
+// que faz sentido pra forma típica do item (ex.: mao é 'height' porque
+// os itens empunhados são altos e estreitos).
 //
 // `grip`: ponto do sprite que encosta no âncora (left/top) E pivô da
 // rotação (CSS transform-origin) — o mesmo ponto serve pras duas
@@ -187,7 +187,16 @@ export function MoonRingCircle() {
 const SLOT_ANCHORS = {
   mao: { slot: 'mao', left: '66%', top: '71%', rotate: -18, layer: 'front', grip: 100, sizeAxis: 'height', size: 34, zIndex: 3 },
   peito: { slot: 'peito', left: '50%', top: '60%', rotate: 0, layer: 'front', grip: 50, sizeAxis: 'height', size: 14, zIndex: 2 },
-  cintura: { slot: 'cintura', left: '50%', top: '72%', rotate: 0, layer: 'front', grip: 50, sizeAxis: 'width', size: 35, zIndex: 2 },
+  // Corda (primeira peça de cintura com arte real): 1056x873, proporção
+  // 1,21 -- larga, ao contrário de todas as outras (altas e estreitas).
+  // Ainda assim medida por altura, como o resto, pra manter a mesma
+  // convenção de escala entre slots; 30% de altura vira uns 36% de
+  // largura, o bastante pra acompanhar o tronco sem passar das mangas.
+  // grip 62 (em vez do centro, 50): o ponto que encosta no âncora é o
+  // NÓ da corda, não o centro geométrico do sprite -- é o que faz o
+  // top abaixo significar "onde fica o nó". Ainda ponto de partida, não
+  // calibração visual final.
+  cintura: { slot: 'cintura', left: '50%', top: '93%', rotate: 0, layer: 'front', grip: 62, sizeAxis: 'height', size: 30, zIndex: 2 },
   atras_cabeca: { slot: 'atras_cabeca', left: '50%', top: '16%', rotate: 0, layer: 'behind', grip: 50, sizeAxis: 'height', size: 22, zIndex: 1 },
 }
 const FALLBACK_ANCHOR = SLOT_ANCHORS.peito
@@ -259,6 +268,32 @@ const GRIP_SHADOW_INTENSITY = 1
 function gripShadowGradient(grip, bandPct) {
   const half = bandPct / 2
   return `linear-gradient(to bottom, transparent ${grip - half}%, rgba(0,0,0,${GRIP_SHADOW_INTENSITY}) ${grip}%, transparent ${grip + half}%)`
+}
+
+// Recorte do slot "cintura": o trecho de corda que passa atrás do
+// corpo não fica na sombra, ele SOME -- o corpo está na frente de
+// verdade, então desenhar essa parte por cima do avatar (mesmo
+// escurecida) sempre ia denunciar a sobreposição. Duas máscaras em
+// degradê -- uma lateral (soma as pontas da corda que desaparecem
+// atrás das mangas) e uma superior (soma o arco que desaparece atrás
+// do tronco, acima da linha do nó) -- compostas por interseção com o
+// mask-image da própria imagem (mask-composite: intersect): só fica
+// visível o que é opaco no sprite E está dentro da faixa central E
+// está abaixo da linha do nó, as três condições ao mesmo tempo.
+const WAIST_CLIP_SIDES = 0.78 // fração da largura preservada (opaca) no centro
+const WAIST_CLIP_TOP = 0.4 // fração da altura do sprite a partir de onde passa a aparecer
+const WAIST_CLIP_SOFTNESS_PCT = 6 // largura da transição suave de cada corte, em pontos percentuais
+
+function waistSideClipGradient() {
+  const half = (WAIST_CLIP_SIDES * 100) / 2
+  const innerStart = 50 - half
+  const innerEnd = 50 + half
+  return `linear-gradient(to right, transparent ${innerStart - WAIST_CLIP_SOFTNESS_PCT}%, black ${innerStart}%, black ${innerEnd}%, transparent ${innerEnd + WAIST_CLIP_SOFTNESS_PCT}%)`
+}
+
+function waistTopClipGradient() {
+  const startPct = WAIST_CLIP_TOP * 100
+  return `linear-gradient(to bottom, transparent ${startPct - WAIST_CLIP_SOFTNESS_PCT}%, black ${startPct}%)`
 }
 
 // Halo dourado dos itens: no slot "mao" ele é reduzido (metade do blur e
@@ -343,6 +378,24 @@ function AnchoredItem({ item, url, anchor }) {
   const wrapperStyle = { ...transformStyle, [sizeProp]: `${size}%`, [otherProp]: 'auto' }
   const fillStyle = { [sizeProp]: '100%', [otherProp]: 'auto', display: 'block' }
   const imgFilter = [override.filter, itemGlowFilter(anchor.slot === 'mao')].filter(Boolean).join(' ')
+  // Recorte por interseção: cada layer de mask-image só some ONDE seu
+  // próprio degradê é transparente -- por isso o sprite entra por
+  // último na lista, senão as bordas já recortadas dos degradês
+  // "vazariam" pixel do sprite fora delas (mask-composite acumula da
+  // esquerda pra direita).
+  const waistMaskStyle =
+    anchor.slot === 'cintura'
+      ? {
+          WebkitMaskImage: `${waistSideClipGradient()}, ${waistTopClipGradient()}, url(${url})`,
+          maskImage: `${waistSideClipGradient()}, ${waistTopClipGradient()}, url(${url})`,
+          WebkitMaskComposite: 'source-in',
+          maskComposite: 'intersect',
+          WebkitMaskSize: '100% 100%',
+          maskSize: '100% 100%',
+          WebkitMaskRepeat: 'no-repeat',
+          maskRepeat: 'no-repeat',
+        }
+      : {}
 
   return (
     <div style={wrapperStyle}>
@@ -350,7 +403,7 @@ function AnchoredItem({ item, url, anchor }) {
         src={url}
         alt={item.name}
         className="object-contain rounded"
-        style={{ ...fillStyle, filter: imgFilter }}
+        style={{ ...fillStyle, filter: imgFilter, ...waistMaskStyle }}
       />
       {anchor.slot === 'mao' && (
         <div
