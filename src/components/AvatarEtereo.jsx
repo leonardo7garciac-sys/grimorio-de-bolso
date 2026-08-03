@@ -192,6 +192,18 @@ const SLOT_ANCHORS = {
 }
 const FALLBACK_ANCHOR = SLOT_ANCHORS.peito
 
+// O slot "mao" tem posição única (lado direito da tela); a mão esquerda usa
+// o espelho dessa posição em torno do centro (50%), calculado aqui em vez
+// de guardado como um segundo âncora fixo, pra não desalinhar se o left/top
+// de "mao" mudar no futuro. Só faz sentido espelhar quando o slot é "mao" —
+// os demais não têm variação por mão.
+function resolveAnchor(base, hand) {
+  if (base.slot === 'mao' && hand === 'mao_esquerda') {
+    return { ...base, left: `${100 - parseFloat(base.left)}%` }
+  }
+  return base
+}
+
 // Exceções por item ao padrão do próprio slot (grip, size, rotate,
 // filter e/ou flipX). Hoje:
 //  - athame e varinha: a arte tem pomo/remate abaixo da empunhadura,
@@ -280,17 +292,23 @@ function AnchoredItem({ item, url, anchor }) {
   const override = ITEM_OVERRIDE[item.slug] ?? {}
   const grip = override.grip ?? anchor.grip ?? 50
   const size = override.size ?? anchor.size
-  const rotate = override.rotate ?? anchor.rotate ?? 0
   // Espelhamento por mão do avatar e espelhamento fixo do override (troca
   // base/ponta do sprite) são fatores independentes -- multiplicam, não se
   // substituem, então os dois ativos ao mesmo tempo se cancelam de volta a 1.
   const handFlip = item.hand === 'mao_esquerda' ? -1 : 1
   const overrideFlip = override.flipX ? -1 : 1
   const scaleXFactor = handFlip * overrideFlip
+  // rotate e offsetX são calibrados olhando a mão direita; pra a mão
+  // esquerda ser um espelho fiel (não só a imagem invertida no lugar
+  // errado), os dois precisam negar junto com a posição -- scaleX(-1) sozinho
+  // não basta (Rotate(r)∘ScaleX(-1) = ScaleX(-1)∘Rotate(-r): espelhar a cena
+  // sem negar o rotate deixaria o ângulo do lado errado).
+  const rotate = (override.rotate ?? anchor.rotate ?? 0) * handFlip
+  const offsetX = (override.offsetX ?? 0) * handFlip
   // offsetX soma no left, fora da string de transform -- assim o
   // deslocamento é sempre horizontal na tela, sem herdar rotate/scaleX
   // do próprio item (que giraria/espelharia o deslocamento junto).
-  const left = override.offsetX ? `calc(${anchor.left} + ${override.offsetX}%)` : anchor.left
+  const left = offsetX ? `calc(${anchor.left} + ${offsetX}%)` : anchor.left
   const transformStyle = {
     position: 'absolute',
     left,
@@ -354,8 +372,11 @@ export default function AvatarEtereo({ glyph, weapon, relics = [], weaponUrl, ha
   const phase = useOrbitPhase(hasMoonRing)
   const dots = useOrbitDots(phase)
 
-  const weaponAnchor = SLOT_ANCHORS[weapon?.slot] ?? SLOT_ANCHORS.mao
-  const relicsWithAnchor = relics.map((r) => ({ ...r, anchor: SLOT_ANCHORS[r.item?.slot] ?? FALLBACK_ANCHOR }))
+  const weaponAnchor = resolveAnchor(SLOT_ANCHORS[weapon?.slot] ?? SLOT_ANCHORS.mao, weapon?.hand)
+  const relicsWithAnchor = relics.map((r) => ({
+    ...r,
+    anchor: resolveAnchor(SLOT_ANCHORS[r.item?.slot] ?? FALLBACK_ANCHOR, r.item?.hand),
+  }))
   const behindRelics = relicsWithAnchor.filter((r) => r.anchor.layer === 'behind')
   const frontRelics = relicsWithAnchor.filter((r) => r.anchor.layer !== 'behind')
 
