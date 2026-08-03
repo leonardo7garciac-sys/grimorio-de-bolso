@@ -60,17 +60,57 @@ export default {
       return new Response('Unauthorized', { status: 401 })
     }
 
+    // Diário de bordo (026_webhook_events.sql): grava o payload cru ANTES
+    // de processar, pra falha de processamento deixar de ser invisível —
+    // hoje ela só existe no console.error do Cloudflare. Se a própria
+    // gravação falhar, só loga: erro aqui não pode virar 4xx/5xx (ver
+    // motivo do 200 sempre, logo abaixo).
+    let eventId = null
+    try {
+      eventId = await insertWebhookEvent(
+        {
+          payload: body,
+          event: body?.event,
+          transaction: body?.data?.purchase?.transaction,
+          email: body?.data?.buyer?.email,
+        },
+        env
+      )
+    } catch (err) {
+      console.error('hotmart webhook: falha ao gravar webhook_events (payload cru)', {
+        message: err?.message,
+      })
+    }
+
     // Daqui pra frente sempre 200: erro interno não pode virar retry
-    // infinito da Hotmart. Falhas ficam só no log do Worker — mas com
-    // a mensagem completa, nunca só "deu erro".
+    // infinito da Hotmart — pior, falhas repetidas fazem a Hotmart
+    // desativar a configuração do webhook inteira. Falhas ficam no log do
+    // Worker (mensagem completa) e agora também em webhook_events.error,
+    // com processed_at nulo — visível numa consulta, não só no console.
     try {
       await handleEvent(body, env)
+      if (eventId) {
+        await markWebhookEventProcessed(eventId, env).catch((err) => {
+          console.error('hotmart webhook: falha ao marcar webhook_events como processado', {
+            message: err?.message,
+            eventId,
+          })
+        })
+      }
     } catch (err) {
       console.error('hotmart webhook: falha ao processar', {
         message: err?.message,
         code: err?.code,
         stack: err?.stack,
       })
+      if (eventId) {
+        await markWebhookEventFailed(eventId, err?.message ?? String(err), env).catch((markErr) => {
+          console.error('hotmart webhook: falha ao marcar webhook_events como falho', {
+            message: markErr?.message,
+            eventId,
+          })
+        })
+      }
     }
     return new Response('OK', { status: 200 })
   },
@@ -220,6 +260,49 @@ async function rpc(env, fn, args) {
     throw err
   }
   return res.status === 204 ? null : res.json()
+}
+
+async function insertWebhookEvent({ payload, event, transaction, email }, env) {
+  const res = await fetch(`${env.SUPABASE_URL}/rest/v1/webhook_events`, {
+    method: 'POST',
+    headers: restHeaders(env, { Prefer: 'return=representation' }),
+    body: JSON.stringify({
+      event: event ?? null,
+      transaction_ref: transaction ?? null,
+      buyer_email: email ?? null,
+      payload,
+    }),
+  })
+  if (!res.ok) {
+    throw new Error(`webhook_events insert falhou: ${res.status} ${await res.text()}`)
+  }
+  const rows = await res.json()
+  return rows[0]?.id ?? null
+}
+
+async function markWebhookEventProcessed(id, env) {
+  const res = await fetch(`${env.SUPABASE_URL}/rest/v1/webhook_events?id=eq.${id}`, {
+    method: 'PATCH',
+    headers: restHeaders(env, { Prefer: 'return=minimal' }),
+    body: JSON.stringify({ processed_at: new Date().toISOString() }),
+  })
+  if (!res.ok) {
+    throw new Error(`webhook_events update (processado) falhou: ${res.status} ${await res.text()}`)
+  }
+}
+
+async function markWebhookEventFailed(id, message, env) {
+  // attempts começa em 0 (default da tabela) e esta é a primeira tentativa
+  // desta linha nesta mesma invocação -- por isso 1 direto, sem precisar
+  // ler o valor atual de volta.
+  const res = await fetch(`${env.SUPABASE_URL}/rest/v1/webhook_events?id=eq.${id}`, {
+    method: 'PATCH',
+    headers: restHeaders(env, { Prefer: 'return=minimal' }),
+    body: JSON.stringify({ error: message, attempts: 1 }),
+  })
+  if (!res.ok) {
+    throw new Error(`webhook_events update (falha) falhou: ${res.status} ${await res.text()}`)
+  }
 }
 
 async function findUserByEmail(email, env) {
