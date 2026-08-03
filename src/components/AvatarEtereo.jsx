@@ -288,6 +288,13 @@ function handOverlayMask(anchor) {
   return `radial-gradient(circle at ${anchor.left} ${anchor.top}, black 0%, black ${inner}%, transparent ${HAND_OVERLAY_RADIUS_PCT}%)`
 }
 
+// Identidade de um item desenhado é slot + mão, não só o slug -- dois itens
+// diferentes podem ocupar o mesmo slot 'mao' ao mesmo tempo (um por mão).
+// item.id (chave real de shop_items) é preferido ao slug por segurança.
+function itemKey(item) {
+  return `${item.id ?? item.slug ?? item.name}-${item.hand ?? 'x'}`
+}
+
 function AnchoredItem({ item, url, anchor }) {
   const override = ITEM_OVERRIDE[item.slug] ?? {}
   const grip = override.grip ?? anchor.grip ?? 50
@@ -368,17 +375,19 @@ function AnchoredItem({ item, url, anchor }) {
 // Palco quadrado: a imagem base ocupa ~80% da largura, deixando 20% de
 // margem para a órbita (anel de cosméticos), que usa 100% do palco e por
 // isso precisa desse respiro para não ser cortada.
-export default function AvatarEtereo({ glyph, weapon, relics = [], weaponUrl, hasAura, hasMoonRing }) {
+export default function AvatarEtereo({ glyph, items = [], hasAura, hasMoonRing }) {
   const phase = useOrbitPhase(hasMoonRing)
   const dots = useOrbitDots(phase)
 
-  const weaponAnchor = resolveAnchor(SLOT_ANCHORS[weapon?.slot] ?? SLOT_ANCHORS.mao, weapon?.hand)
-  const relicsWithAnchor = relics.map((r) => ({
-    ...r,
-    anchor: resolveAnchor(SLOT_ANCHORS[r.item?.slot] ?? FALLBACK_ANCHOR, r.item?.hand),
+  const itemsWithAnchor = items.map((entry) => ({
+    ...entry,
+    anchor: resolveAnchor(SLOT_ANCHORS[entry.item?.slot] ?? FALLBACK_ANCHOR, entry.item?.hand),
   }))
-  const behindRelics = relicsWithAnchor.filter((r) => r.anchor.layer === 'behind')
-  const frontRelics = relicsWithAnchor.filter((r) => r.anchor.layer !== 'behind')
+  const behindItems = itemsWithAnchor.filter((entry) => entry.anchor.layer === 'behind')
+  const frontItems = itemsWithAnchor.filter((entry) => entry.anchor.layer !== 'behind')
+  // Cada item de mão (podem ser até dois, um por mão) ganha sua própria
+  // camada de "dedos por cima" -- mascarada no âncora daquele item específico.
+  const handItems = frontItems.filter((entry) => entry.anchor.slot === 'mao')
 
   return (
     <div
@@ -393,8 +402,8 @@ export default function AvatarEtereo({ glyph, weapon, relics = [], weaponUrl, ha
       )}
 
       {/* itens de slot "behind" (ex.: atras_cabeca) — atrás da imagem base */}
-      {behindRelics.map((r) => (
-        <AnchoredItem key={r.item.slug ?? r.item.name} item={r.item} url={r.url} anchor={r.anchor} />
+      {behindItems.map((entry) => (
+        <AnchoredItem key={itemKey(entry.item)} item={entry.item} url={entry.url} anchor={entry.anchor} />
       ))}
 
       {/* base: imagem do mago (fundo transparente, composta normalmente) */}
@@ -421,21 +430,20 @@ export default function AvatarEtereo({ glyph, weapon, relics = [], weaponUrl, ha
         {glyph}
       </div>
 
-      {frontRelics.map((r) => (
-        <AnchoredItem key={r.item.slug ?? r.item.name} item={r.item} url={r.url} anchor={r.anchor} />
+      {frontItems.map((entry) => (
+        <AnchoredItem key={itemKey(entry.item)} item={entry.item} url={entry.url} anchor={entry.anchor} />
       ))}
 
-      {weapon && <AnchoredItem item={weapon} url={weaponUrl} anchor={weaponAnchor} />}
-
-      {/* dedos do mago por cima do item empunhado -- acima de tudo */}
-      {weapon && (
+      {/* dedos do mago por cima do item empunhado -- acima de tudo, um por mão */}
+      {handItems.map((entry) => (
         <div
+          key={`dedos-${itemKey(entry.item)}`}
           aria-hidden="true"
           className="absolute inset-0 pointer-events-none"
           style={{
             mixBlendMode: 'screen',
-            WebkitMaskImage: handOverlayMask(weaponAnchor),
-            maskImage: handOverlayMask(weaponAnchor),
+            WebkitMaskImage: handOverlayMask(entry.anchor),
+            maskImage: handOverlayMask(entry.anchor),
             WebkitMaskRepeat: 'no-repeat',
             maskRepeat: 'no-repeat',
           }}
@@ -453,7 +461,7 @@ export default function AvatarEtereo({ glyph, weapon, relics = [], weaponUrl, ha
             }}
           />
         </div>
-      )}
+      ))}
 
       {hasMoonRing && (
         <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full" style={{ overflow: 'visible' }}>

@@ -28,8 +28,17 @@ export default function MagoScreen({ onClose }) {
     () => equippedItems.filter((e) => e.shop_items?.kind === 'cosmetico_perfil').map((e) => e.shop_items),
     [equippedItems]
   )
-  const weaponRow = useMemo(() => arsenal.find((e) => e.shop_items.kind === 'arma_magica'), [arsenal])
-  const relics = useMemo(() => arsenal.filter((e) => e.shop_items.kind === 'item_encantado'), [arsenal])
+  // Identidade de um item desenhado no avatar é slot + mão, não kind — dois
+  // itens 'arma_magica' (um em cada mão) precisam chegar juntos ao
+  // AvatarEtereo, por isso a lista completa, sem find() nenhum escolhendo só um.
+  const equippedForAvatar = useMemo(
+    () =>
+      arsenal.map((e) => ({
+        item: { ...e.shop_items, hand: e.hand },
+        url: equippedImageUrls[e.item_id] ?? imageUrls[e.item_id],
+      })),
+    [arsenal, equippedImageUrls, imageUrls]
+  )
 
   useEffect(() => {
     const withImages = arsenal.filter((e) => e.shop_items.image_path)
@@ -110,12 +119,7 @@ export default function MagoScreen({ onClose }) {
         <div className="flex flex-col items-center text-center mb-2">
           <AvatarEtereo
             glyph={current.glyph}
-            weapon={weaponRow ? { ...weaponRow.shop_items, hand: weaponRow.hand } : null}
-            weaponUrl={weaponRow ? equippedImageUrls[weaponRow.item_id] ?? imageUrls[weaponRow.item_id] : null}
-            relics={relics.map((e) => ({
-              item: { ...e.shop_items, hand: e.hand },
-              url: equippedImageUrls[e.item_id] ?? imageUrls[e.item_id],
-            }))}
+            items={equippedForAvatar}
             hasAura={cosmetics.some((c) => c.slug === AURA_SLUG)}
             hasMoonRing={cosmetics.some((c) => c.slug === MOON_RING_SLUG)}
           />
