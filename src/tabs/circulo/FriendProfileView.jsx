@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { Card, SectionLabel, GhostButton } from '../../components/ui'
+import AvatarEtereo from '../../components/AvatarEtereo'
 
 const KIND_LABEL = {
   arma_magica: 'Arma mágica',
@@ -14,6 +15,7 @@ export default function FriendProfileView({ friendId, friendNickname, onBack, on
   const [profile, setProfile] = useState(null)
   const [error, setError] = useState('')
   const [itemImages, setItemImages] = useState({})
+  const [avatarImageUrls, setAvatarImageUrls] = useState({})
   const [sigilUrl, setSigilUrl] = useState(null)
   const [blocking, setBlocking] = useState(false)
 
@@ -44,6 +46,20 @@ export default function FriendProfileView({ friendId, friendNickname, onBack, on
       setItemImages(Object.fromEntries(entries))
     }
 
+    // Arte pro avatar (só dos itens equipados): prioriza image_path_equipped,
+    // cai para image_path quando não houver -- mesmo fallback do MagoScreen.
+    const equippedWithImages = items.filter((i) => i.equipped && (i.image_path_equipped || i.image_path))
+    if (equippedWithImages.length > 0) {
+      const entries = await Promise.all(
+        equippedWithImages.map(async (i) => {
+          const path = i.image_path_equipped ?? i.image_path
+          const { data: signed } = await supabase.storage.from('loja').createSignedUrl(path, 3600)
+          return [path, signed?.signedUrl ?? null]
+        })
+      )
+      setAvatarImageUrls(Object.fromEntries(entries))
+    }
+
     if (data?.servitor?.sigil_path) {
       const { data: signed } = await supabase.storage.from('servidores').createSignedUrl(data.servitor.sigil_path, 3600)
       setSigilUrl(signed?.signedUrl ?? null)
@@ -71,6 +87,16 @@ export default function FriendProfileView({ friendId, friendNickname, onBack, on
     onBlocked?.()
   }
 
+  // Só os itens equipados desenham no avatar -- slot e hand vêm do próprio
+  // item (adicionados em friend_profile), mesma identidade usada no avatar
+  // do próprio usuário em MagoScreen.
+  const equippedForAvatar = (profile?.items ?? [])
+    .filter((item) => item.equipped)
+    .map((item) => ({
+      item: { slug: item.slug, name: item.name, kind: item.kind, slot: item.slot, hand: item.hand },
+      url: avatarImageUrls[item.image_path_equipped ?? item.image_path],
+    }))
+
   return (
     <>
       <button
@@ -88,7 +114,7 @@ export default function FriendProfileView({ friendId, friendNickname, onBack, on
       ) : (
         <>
           <div className="flex flex-col items-center text-center mb-4">
-            <span className="text-3xl text-gold">{profile.title_glyph}</span>
+            <AvatarEtereo glyph={profile.title_glyph} items={equippedForAvatar} />
             <div className="text-lg mt-2">{friendNickname}</div>
             <div className="text-xs text-muted">
               {profile.title_name}
