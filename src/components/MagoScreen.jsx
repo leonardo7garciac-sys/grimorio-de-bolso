@@ -4,9 +4,6 @@ import { useProfile } from '../hooks/useProfile'
 import AvatarEtereo from './AvatarEtereo'
 import { SectionLabel } from './ui'
 
-const AURA_SLUG = 'aura-dourada'
-const MOON_RING_SLUG = 'moldura-lunar'
-
 const KIND_LABEL = { arma_magica: 'Arma mágica', item_encantado: 'Item encantado' }
 const KIND_GLYPH = { arma_magica: '🗡', item_encantado: '🜏' }
 
@@ -24,20 +21,19 @@ export default function MagoScreen({ onClose }) {
     () => equippedItems.filter((e) => ['arma_magica', 'item_encantado'].includes(e.shop_items?.kind)),
     [equippedItems]
   )
-  const cosmetics = useMemo(
-    () => equippedItems.filter((e) => e.shop_items?.kind === 'cosmetico_perfil').map((e) => e.shop_items),
-    [equippedItems]
-  )
-  // Identidade de um item desenhado no avatar é slot + mão, não kind — dois
-  // itens 'arma_magica' (um em cada mão) precisam chegar juntos ao
-  // AvatarEtereo, por isso a lista completa, sem find() nenhum escolhendo só um.
+  // Todos os equipados, não só o arsenal -- o AvatarEtereo decide sozinho o
+  // que desenhar por âncora (slot) e o que liga/desliga por slug (aura,
+  // moldura lunar, ambos de slot nulo). Identidade de um item desenhado é
+  // slot + mão, não kind — dois itens 'arma_magica' (um em cada mão)
+  // precisam chegar juntos, por isso a lista completa, sem find() nenhum
+  // escolhendo só um.
   const equippedForAvatar = useMemo(
     () =>
-      arsenal.map((e) => ({
+      equippedItems.map((e) => ({
         item: { ...e.shop_items, hand: e.hand },
         url: equippedImageUrls[e.item_id] ?? imageUrls[e.item_id],
       })),
-    [arsenal, equippedImageUrls, imageUrls]
+    [equippedItems, equippedImageUrls, imageUrls]
   )
 
   useEffect(() => {
@@ -117,12 +113,7 @@ export default function MagoScreen({ onClose }) {
         </button>
 
         <div className="flex flex-col items-center text-center mb-2">
-          <AvatarEtereo
-            glyph={current.glyph}
-            items={equippedForAvatar}
-            hasAura={cosmetics.some((c) => c.slug === AURA_SLUG)}
-            hasMoonRing={cosmetics.some((c) => c.slug === MOON_RING_SLUG)}
-          />
+          <AvatarEtereo glyph={current.glyph} items={equippedForAvatar} />
           <div className="text-lg mt-2">{current.name}</div>
           {cosmeticTitleName && <div className="text-sm text-gold mt-1">{cosmeticTitleName}</div>}
 

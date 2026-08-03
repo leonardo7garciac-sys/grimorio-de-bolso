@@ -490,18 +490,33 @@ function AnchoredItem({ item, url, anchor }) {
   )
 }
 
+// Cosméticos de slot nulo (aura, moldura lunar): não ocupam lugar no corpo,
+// então não passam pelo pipeline de âncoras -- são ligados/desligados pelo
+// slug, direto na mesma lista `items` que já alimenta os itens de slot. Por
+// isso servem os dois casos (avatar próprio e do amigo) sem prop nenhuma
+// além de `items`, igual ao resto.
+const AURA_SLUG = 'aura-dourada'
+const MOON_RING_SLUG = 'moldura-lunar'
+
 // ── Avatar ────────────────────────────────────────────────────────────────
 // Palco quadrado: a imagem base ocupa ~80% da largura, deixando 20% de
 // margem para a órbita (anel de cosméticos), que usa 100% do palco e por
 // isso precisa desse respiro para não ser cortada.
-export default function AvatarEtereo({ glyph, items = [], hasAura, hasMoonRing }) {
+export default function AvatarEtereo({ glyph, items = [] }) {
+  const hasAura = items.some((entry) => entry.item?.slug === AURA_SLUG)
+  const hasMoonRing = items.some((entry) => entry.item?.slug === MOON_RING_SLUG)
   const phase = useOrbitPhase(hasMoonRing)
   const dots = useOrbitDots(phase)
 
-  const itemsWithAnchor = items.map((entry) => ({
-    ...entry,
-    anchor: resolveAnchor(SLOT_ANCHORS[entry.item?.slot] ?? FALLBACK_ANCHOR, entry.item?.hand),
-  }))
+  // Só itens com slot real passam pelo pipeline de âncoras -- sem este
+  // filtro, um cosmético de slot nulo cairia no FALLBACK_ANCHOR (peito) e
+  // desenharia um glifo solto ali.
+  const itemsWithAnchor = items
+    .filter((entry) => entry.item?.slot)
+    .map((entry) => ({
+      ...entry,
+      anchor: resolveAnchor(SLOT_ANCHORS[entry.item.slot] ?? FALLBACK_ANCHOR, entry.item?.hand),
+    }))
   // Ordenado por stackOrder (não por z-index -- ver o comentário em
   // SLOT_ANCHORS): dentro do mesmo layer, quem tem stackOrder maior
   // entra depois no DOM e por isso pinta por cima, sem precisar de
