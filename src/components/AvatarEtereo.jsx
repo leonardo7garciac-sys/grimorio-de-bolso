@@ -198,6 +198,11 @@ const SLOT_ANCHORS = {
   // calibração visual final.
   cintura: { slot: 'cintura', left: '50%', top: '93%', rotate: 0, layer: 'front', grip: 62, sizeAxis: 'height', size: 30, zIndex: 2 },
   atras_cabeca: { slot: 'atras_cabeca', left: '50%', top: '16%', rotate: 0, layer: 'behind', grip: 50, sizeAxis: 'height', size: 22, zIndex: 1 },
+  // Cajado preso às costas: grande e na diagonal, surgindo por trás do
+  // ombro direito de quem olha. Ponto de partida, sem calibração
+  // visual -- ver BACK_CLIP_X/Y abaixo para o recorte que impede a
+  // peça de atravessar o tronco translúcido.
+  costas: { slot: 'costas', left: '58%', top: '50%', rotate: 32, layer: 'behind', grip: 50, sizeAxis: 'height', size: 62, zIndex: 1 },
 }
 const FALLBACK_ANCHOR = SLOT_ANCHORS.peito
 
@@ -224,7 +229,12 @@ function resolveAnchor(base, hand) {
 //    fica a prumo — herdar o -18 do slot varreria o corpo do incensário
 //    para o lado.
 //  - cajado e cálice: tamanho de "mao" (34% de altura) não serve pra
-//    eles — o cajado é bem mais alto, o cálice bem menor.
+//    eles — o cajado é bem mais alto, o cálice bem menor. O cajado
+//    também baixa o grip (100 → 62): medido do topo do sprite, um
+//    valor menor desce a peça inteira, porque desloca o ponto que
+//    encosta no âncora pra mais perto do meio do sprite.
+//  - talismã: tamanho de "peito" (14% de altura) é pequeno demais pra
+//    ele — posição herdada do slot já está certa, só o size muda.
 //  - filter: CSS filter aplicado só na imagem do item (não na sombra do
 //    grip), pra ajuste pontual de cor/brilho por peça.
 //  - flipX: espelhamento horizontal fixo do sprite (troca base/ponta),
@@ -245,9 +255,10 @@ const ITEM_OVERRIDE = {
   // convenção do slot (positivo = ponta pra direita) continua valendo.
   'varinha-de-amendoeira-branca': { grip: 82, flipX: true, rotate: 3, offsetX: -2 },
   'turibulo-do-incenso-eterno': { grip: 20, rotate: 0 },
-  'cajado-do-carvalho-antigo': { size: 45 },
+  'cajado-do-carvalho-antigo': { size: 52, grip: 62 },
   'calice-de-mercurio': { size: 24, grip: 68, filter: 'saturate(1.35) brightness(1.12)', offsetX: 2 },
   'pentaculo-de-salomao': { filter: 'saturate(1.4) brightness(1.25)' },
+  'talisma-de-saturno': { size: 22 },
 }
 
 const ITEM_GLYPH_FALLBACK = { arma_magica: '🗡', item_encantado: '🜏' }
@@ -294,6 +305,30 @@ function waistSideClipGradient() {
 function waistTopClipGradient() {
   const startPct = WAIST_CLIP_TOP * 100
   return `linear-gradient(to bottom, transparent ${startPct - WAIST_CLIP_SOFTNESS_PCT}%, black ${startPct}%)`
+}
+
+// Recorte do slot "costas": mesmo princípio da cintura (duas máscaras
+// em degradê compostas por interseção), mas com uma diferença que
+// importa -- o recorte da cintura corta o PRÓPRIO sprite, então gira
+// junto com o item; o cajado é diagonal (rotate 32) e o corte precisa
+// ficar alinhado ao CORPO, não à peça. Por isso as frações aqui são do
+// PALCO (não do sprite) e a máscara é aplicada num wrapper à parte,
+// sem transform, do tamanho do palco inteiro -- ver o uso em
+// AnchoredItem. Só fica visível o que está à direita de BACK_CLIP_X E
+// acima de BACK_CLIP_Y ao mesmo tempo (o resto passaria por trás do
+// tronco).
+const BACK_CLIP_X = 0.52 // fração da largura do palco a partir de onde a peça aparece
+const BACK_CLIP_Y = 0.55 // fração da altura do palco até onde a peça aparece
+const BACK_CLIP_SOFTNESS_PCT = 6
+
+function backClipXGradient() {
+  const startPct = BACK_CLIP_X * 100
+  return `linear-gradient(to right, transparent ${startPct}%, black ${startPct + BACK_CLIP_SOFTNESS_PCT}%)`
+}
+
+function backClipYGradient() {
+  const endPct = BACK_CLIP_Y * 100
+  return `linear-gradient(to bottom, black ${endPct - BACK_CLIP_SOFTNESS_PCT}%, transparent ${endPct}%)`
 }
 
 // Halo dourado dos itens: no slot "mao" ele é reduzido (metade do blur e
@@ -360,8 +395,29 @@ function AnchoredItem({ item, url, anchor }) {
     zIndex: anchor.zIndex,
   }
 
+  // Recorte do slot "costas" (ver backClipXGradient/backClipYGradient):
+  // aplicado num wrapper à parte, sem transform próprio, do tamanho do
+  // palco inteiro -- não no elemento do item (que já carrega o rotate
+  // de 32°) -- pra o corte ficar fixo em relação ao corpo, não à peça.
+  const wrapInBackClip = (node) =>
+    anchor.slot === 'costas' ? (
+      <div
+        className="absolute inset-0 w-full h-full pointer-events-none"
+        style={{
+          WebkitMaskImage: `${backClipXGradient()}, ${backClipYGradient()}`,
+          maskImage: `${backClipXGradient()}, ${backClipYGradient()}`,
+          WebkitMaskComposite: 'source-in',
+          maskComposite: 'intersect',
+        }}
+      >
+        {node}
+      </div>
+    ) : (
+      node
+    )
+
   if (!url) {
-    return (
+    return wrapInBackClip(
       <span className="text-lg" style={transformStyle}>
         {ITEM_GLYPH_FALLBACK[item.kind] ?? '❖'}
       </span>
@@ -397,7 +453,7 @@ function AnchoredItem({ item, url, anchor }) {
         }
       : {}
 
-  return (
+  return wrapInBackClip(
     <div style={wrapperStyle}>
       <img
         src={url}
