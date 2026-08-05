@@ -1,5 +1,10 @@
-export default function GroupedTab({ sections, section, onSectionChange, components }) {
+import PremiumGate from './PremiumGate'
+
+export default function GroupedTab({ sections, section, onSectionChange, components, paying = true }) {
+  const current = sections.find((s) => s.id === section)
   const Section = components[section]
+  const gated = current?.premium && !paying
+
   return (
     <>
       <div className="flex gap-1.5 mb-4">
@@ -13,10 +18,11 @@ export default function GroupedTab({ sections, section, onSectionChange, compone
             }`}
           >
             {s.label}
+            {s.premium && !paying ? ' 🗝' : ''}
           </button>
         ))}
       </div>
-      {Section && <Section />}
+      {gated ? <PremiumGate /> : Section && <Section />}
     </>
   )
 }

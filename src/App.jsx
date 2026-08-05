@@ -16,11 +16,11 @@ import AcervoTab from './tabs/AcervoTab'
 import ForumTab from './tabs/ForumTab'
 import RankingTab from './tabs/RankingTab'
 import ServidorTab from './tabs/ServidorTab'
+import SigilizadorTab from './tabs/SigilizadorTab'
 import CirculoTab from './tabs/CirculoTab'
 
 const TAB_COMPONENTS = {
   grimoires: GrimoriosTab,
-  servidor: ServidorTab,
   circle: CirculoTab,
 }
 
@@ -31,6 +31,8 @@ const SECTION_COMPONENTS = {
   library: AcervoTab,
   forum: ForumTab,
   ranking: RankingTab,
+  servidor_astral: ServidorTab,
+  sigilizador: SigilizadorTab,
 }
 
 function App() {
@@ -87,6 +89,7 @@ function App() {
               section={section}
               onSectionChange={setSection}
               components={SECTION_COMPONENTS}
+              paying={paying}
             />
           ) : (
             <TabContent />

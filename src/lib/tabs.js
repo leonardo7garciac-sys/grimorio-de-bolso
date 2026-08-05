@@ -3,7 +3,7 @@ export const TABS = [
   { id: 'oficio', label: 'Ofício', icon: '🕯', premium: false },
   { id: 'compendio', label: 'Compêndio', icon: '🜏', premium: true },
   { id: 'conclave', label: 'Conclave', icon: '🗣', premium: true },
-  { id: 'servidor', label: 'Servidor', icon: '🕸', premium: false },
+  { id: 'servidor', label: 'FORJA', icon: '🕸', premium: false },
   { id: 'circle', label: 'Círculo', icon: '👥', premium: false },
 ]
 
@@ -21,6 +21,10 @@ export const TAB_GROUPS = {
   conclave: [
     { id: 'forum', label: 'Fórum' },
     { id: 'ranking', label: 'Ranking' },
+  ],
+  servidor: [
+    { id: 'servidor_astral', label: 'Servidor Astral' },
+    { id: 'sigilizador', label: 'Sigilizador', premium: true },
   ],
 }
 
