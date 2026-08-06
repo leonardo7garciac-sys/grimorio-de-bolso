@@ -30,6 +30,11 @@ const SPARE_SCALE_STEP = 0.1
 const SPARE_SCALE_MIN = 0.4
 const SPARE_SCALE_MAX = 2.2
 
+// Gesto lateral (navegar) x toque parado (entrar/sair da contemplação):
+// mesmo limiar usado nos dois lugares que precisam distinguir os dois.
+const SWIPE_THRESHOLD_PX = 50
+const TAP_THRESHOLD_PX = 10
+
 function planetLabel(id) {
   return KAMEA_PLANETS.find((p) => p.id === id)?.label ?? id
 }
@@ -153,6 +158,151 @@ function SpareCanvas({ instances, selectedId, onSelect, onDrag }) {
   )
 }
 
+// Distingue toque parado (tap) de arrasto lateral (swipe) a partir do
+// mesmo par de eventos pointerdown/pointerup -- usado tanto na tela de
+// detalhe quanto no modo de contemplação, com destinos diferentes pro
+// tap (entrar/sair) mas o mesmo swipe (navegar entre sigilos).
+function useSwipeAndTap({ onSwipeLeft, onSwipeRight, onTap }) {
+  const startRef = useRef(null)
+  return {
+    onPointerDown: (e) => {
+      startRef.current = { x: e.clientX, y: e.clientY }
+    },
+    onPointerUp: (e) => {
+      const start = startRef.current
+      startRef.current = null
+      if (!start) return
+      const dx = e.clientX - start.x
+      const dy = e.clientY - start.y
+      if (Math.abs(dx) > SWIPE_THRESHOLD_PX && Math.abs(dx) > Math.abs(dy)) {
+        if (dx < 0) onSwipeLeft?.()
+        else onSwipeRight?.()
+      } else if (onTap && Math.abs(dx) < TAP_THRESHOLD_PX && Math.abs(dy) < TAP_THRESHOLD_PX) {
+        onTap()
+      }
+    },
+  }
+}
+
+// Enquanto em contemplação, pede pra tela não apagar. Sem suporte
+// (navigator.wakeLock ausente) ou pedido recusado, degrada em
+// silêncio -- fitar o sigilo continua funcionando, só sem a garantia.
+// Reconquista o lock se a aba voltar a ficar visível (o navegador
+// solta o lock sozinho quando ela sai de foco).
+function useWakeLock(active) {
+  useEffect(() => {
+    if (!active || !('wakeLock' in navigator)) return undefined
+    let sentinel = null
+    let cancelled = false
+
+    async function acquire() {
+      try {
+        sentinel = await navigator.wakeLock.request('screen')
+      } catch {
+        // sem suporte real, permissão negada, ou aba em segundo plano
+      }
+    }
+    acquire()
+
+    function handleVisibility() {
+      if (document.visibilityState === 'visible' && !cancelled) acquire()
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+
+    return () => {
+      cancelled = true
+      document.removeEventListener('visibilitychange', handleVisibility)
+      sentinel?.release().catch(() => {})
+    }
+  }, [active])
+}
+
+// Tela dedicada de um sigilo salvo: glifo grande, nome discreto, ações
+// mínimas. Toque no glifo entra em modo de contemplação (tela cheia,
+// sem nada além do traço); toque nele sai. Arrasto lateral navega
+// entre os sigilos salvos nos dois modos.
+function SigilDetailScreen({ sigil, hasPrev, hasNext, onBack, onPrev, onNext, onRename, onDelete, onDownload, busy }) {
+  const [contemplating, setContemplating] = useState(false)
+  const [editingName, setEditingName] = useState(false)
+  const [draftName, setDraftName] = useState(sigil.name)
+
+  useEffect(() => {
+    setEditingName(false)
+    setDraftName(sigil.name)
+  }, [sigil.id, sigil.name])
+
+  useWakeLock(contemplating)
+
+  const swipeOnly = useSwipeAndTap({ onSwipeLeft: hasNext ? onNext : null, onSwipeRight: hasPrev ? onPrev : null })
+  const swipeAndEnter = useSwipeAndTap({
+    onSwipeLeft: hasNext ? onNext : null,
+    onSwipeRight: hasPrev ? onPrev : null,
+    onTap: () => setContemplating(true),
+  })
+  const swipeAndExit = useSwipeAndTap({
+    onSwipeLeft: hasNext ? onNext : null,
+    onSwipeRight: hasPrev ? onPrev : null,
+    onTap: () => setContemplating(false),
+  })
+
+  if (contemplating) {
+    return (
+      <div className="fixed inset-0 z-40 bg-navy-deep grid place-items-center p-6" {...swipeAndExit}>
+        <div className="w-full max-w-md aspect-square" dangerouslySetInnerHTML={{ __html: sigil.svg }} />
+      </div>
+    )
+  }
+
+  return (
+    <>
+      <button type="button" onClick={onBack} className="bg-transparent border-none text-gold text-sm cursor-pointer pb-3.5">
+        ← Sigilos
+      </button>
+
+      <div className="w-full aspect-square touch-none select-none" {...swipeAndEnter} dangerouslySetInnerHTML={{ __html: sigil.svg }} />
+
+      <div className="text-center mt-3" {...swipeOnly}>
+        {editingName ? (
+          <div className="flex gap-1.5 justify-center">
+            <input
+              value={draftName}
+              onChange={(e) => setDraftName(e.target.value)}
+              maxLength={60}
+              autoFocus
+              className="flex-1 min-w-0 max-w-[220px] box-border bg-white/[.04] border border-gold/25 rounded-lg text-ink text-sm p-1.5 focus:outline-none focus:border-gold"
+            />
+            <button
+              type="button"
+              disabled={busy || draftName.trim().length < 1}
+              onClick={() => {
+                onRename(draftName)
+                setEditingName(false)
+              }}
+              className="bg-transparent border-none text-gold text-[11px] cursor-pointer disabled:opacity-50"
+            >
+              salvar
+            </button>
+          </div>
+        ) : (
+          <div className="text-sm text-muted">{sigil.name}</div>
+        )}
+      </div>
+
+      <div className="flex items-center justify-center gap-2 mt-4">
+        <GhostButton onClick={() => setEditingName((v) => !v)}>{editingName ? 'cancelar' : 'renomear'}</GhostButton>
+        <GhostButton onClick={onDownload}>baixar imagem</GhostButton>
+        <GhostButton hue="var(--color-red)" disabled={busy} onClick={onDelete}>
+          apagar
+        </GhostButton>
+      </div>
+
+      <p className="text-[11px] text-faint text-center mt-5 leading-relaxed">
+        toca no glifo pra entrar em modo de contemplação · arrasta pros lados pra navegar
+      </p>
+    </>
+  )
+}
+
 export default function SigilizadorTab() {
   const { user } = useAuth()
 
@@ -175,8 +325,9 @@ export default function SigilizadorTab() {
   const [sigils, setSigils] = useState(null)
   const [error, setError] = useState('')
   const [busyId, setBusyId] = useState(null)
-  const [renamingId, setRenamingId] = useState(null)
-  const [renameValue, setRenameValue] = useState('')
+
+  const [view, setView] = useState('lista')
+  const [detailIndex, setDetailIndex] = useState(null)
 
   async function load() {
     const { data, error } = await supabase
@@ -199,6 +350,7 @@ export default function SigilizadorTab() {
   const planet = KAMEA_PLANETS.find((p) => p.id === planetId)
   const deduped = dedupeLetters(normalized)
   const selectedLetter = spareInstances.find((inst) => inst.id === selectedLetterId) ?? null
+  const currentSigil = detailIndex !== null && sigils ? sigils[detailIndex] : null
 
   function forge() {
     if (method === 'kamea') {
@@ -275,7 +427,38 @@ export default function SigilizadorTab() {
     await load()
   }
 
-  async function remove(sigil) {
+  function openDetail(index) {
+    setDetailIndex(index)
+    setView('detalhe')
+  }
+
+  function closeDetail() {
+    setView('lista')
+    setDetailIndex(null)
+  }
+
+  function goNext() {
+    setDetailIndex((i) => (i === null || !sigils ? i : Math.min(sigils.length - 1, i + 1)))
+  }
+
+  function goPrev() {
+    setDetailIndex((i) => (i === null ? i : Math.max(0, i - 1)))
+  }
+
+  async function renameSigil(sigil, newName) {
+    const trimmed = newName.trim()
+    if (trimmed.length < 1 || trimmed.length > 60) return
+    setBusyId(sigil.id)
+    const { error } = await supabase.from('sigils').update({ name: trimmed }).eq('id', sigil.id)
+    setBusyId(null)
+    if (error) {
+      alert(error.message)
+      return
+    }
+    await load()
+  }
+
+  async function deleteSigil(sigil) {
     const ok = window.confirm(`Apagar o sigilo "${sigil.name}"? Não pode ser desfeito.`)
     if (!ok) return
     setBusyId(sigil.id)
@@ -285,26 +468,25 @@ export default function SigilizadorTab() {
       alert(error.message)
       return
     }
+    closeDetail()
     await load()
   }
 
-  function startRename(sigil) {
-    setRenamingId(sigil.id)
-    setRenameValue(sigil.name)
-  }
-
-  async function saveRename(sigil) {
-    const trimmed = renameValue.trim()
-    if (trimmed.length < 1 || trimmed.length > 60) return
-    setBusyId(sigil.id)
-    const { error } = await supabase.from('sigils').update({ name: trimmed }).eq('id', sigil.id)
-    setBusyId(null)
-    if (error) {
-      alert(error.message)
-      return
-    }
-    setRenamingId(null)
-    await load()
+  if (view === 'detalhe' && currentSigil) {
+    return (
+      <SigilDetailScreen
+        sigil={currentSigil}
+        hasPrev={detailIndex > 0}
+        hasNext={sigils ? detailIndex < sigils.length - 1 : false}
+        onBack={closeDetail}
+        onPrev={goPrev}
+        onNext={goNext}
+        onRename={(newName) => renameSigil(currentSigil, newName)}
+        onDelete={() => deleteSigil(currentSigil)}
+        onDownload={() => downloadSvg(currentSigil.svg, currentSigil.name)}
+        busy={busyId === currentSigil.id}
+      />
+    )
   }
 
   return (
@@ -372,11 +554,7 @@ export default function SigilizadorTab() {
           </div>
         )}
 
-        <GoldButton
-          small
-          disabled={normalized.length === 0}
-          onClick={method === 'spare' ? composeSpare : forge}
-        >
+        <GoldButton small disabled={normalized.length === 0} onClick={method === 'spare' ? composeSpare : forge}>
           {method === 'spare' ? 'Compor monograma' : 'Forjar sigilo'}
         </GoldButton>
       </Card>
@@ -482,60 +660,24 @@ export default function SigilizadorTab() {
       ) : sigils.length === 0 ? (
         <p className="text-[13px] text-faint text-center py-6">Nenhum sigilo forjado ainda.</p>
       ) : (
-        sigils.map((s) => (
-          <Card key={s.id} className="p-3.5 flex items-center gap-3.5">
-            <SigilThumb svg={s.svg} />
-            <div className="flex-1 min-w-0">
-              {renamingId === s.id ? (
-                <div className="flex gap-1.5">
-                  <input
-                    value={renameValue}
-                    onChange={(e) => setRenameValue(e.target.value)}
-                    maxLength={60}
-                    className="flex-1 min-w-0 box-border bg-white/[.04] border border-gold/25 rounded-lg text-ink text-sm p-1.5 focus:outline-none focus:border-gold"
-                  />
-                  <button
-                    type="button"
-                    disabled={busyId === s.id || renameValue.trim().length < 1}
-                    onClick={() => saveRename(s)}
-                    className="bg-transparent border-none text-gold text-[11px] cursor-pointer disabled:opacity-50"
-                  >
-                    salvar
-                  </button>
-                </div>
-              ) : (
+        sigils.map((s, i) => (
+          <button
+            key={s.id}
+            type="button"
+            onClick={() => openDetail(i)}
+            className="w-full text-left bg-transparent border-none p-0 cursor-pointer"
+          >
+            <Card className="p-3.5 flex items-center gap-3.5">
+              <SigilThumb svg={s.svg} />
+              <div className="flex-1 min-w-0">
                 <div className="text-[15px] truncate">{s.name}</div>
-              )}
-              <div className="text-[10px] text-muted uppercase tracking-wide mt-0.5">
-                {METHOD_LABEL[s.method] ?? s.method}
-                {s.method === 'kamea' && s.detail ? ` · ${planetLabel(s.detail)}` : ''}
+                <div className="text-[10px] text-muted uppercase tracking-wide mt-0.5">
+                  {METHOD_LABEL[s.method] ?? s.method}
+                  {s.method === 'kamea' && s.detail ? ` · ${planetLabel(s.detail)}` : ''}
+                </div>
               </div>
-            </div>
-            <div className="flex flex-col gap-1.5 items-end flex-shrink-0">
-              <button
-                type="button"
-                onClick={() => downloadSvg(s.svg, s.name)}
-                className="bg-transparent border-none text-faint text-[11px] cursor-pointer"
-              >
-                baixar
-              </button>
-              <button
-                type="button"
-                onClick={() => (renamingId === s.id ? setRenamingId(null) : startRename(s))}
-                className="bg-transparent border-none text-faint text-[11px] cursor-pointer"
-              >
-                {renamingId === s.id ? 'cancelar' : 'renomear'}
-              </button>
-              <button
-                type="button"
-                disabled={busyId === s.id}
-                onClick={() => remove(s)}
-                className="bg-transparent border-none text-red text-[11px] cursor-pointer disabled:opacity-50"
-              >
-                apagar
-              </button>
-            </div>
-          </Card>
+            </Card>
+          </button>
         ))
       )}
     </>
