@@ -170,6 +170,21 @@ export default function MagoScreen({ onClose }) {
           </div>
         )}
 
+        <div className="flex items-center justify-center gap-3 mt-10">
+          <a href="/legal/termos" target="_blank" rel="noopener noreferrer" className="text-[11px] text-faint no-underline">
+            Termos de Uso
+          </a>
+          <span className="text-[11px] text-faint">·</span>
+          <a
+            href="/legal/privacidade"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[11px] text-faint no-underline"
+          >
+            Política de Privacidade
+          </a>
+        </div>
+
         <DeleteAccountSection />
       </div>
     </div>

@@ -8,6 +8,7 @@ import PremiumGate from './components/PremiumGate'
 import MagoScreen from './components/MagoScreen'
 import GroupedTab from './components/GroupedTab'
 import UpdatePrompt from './components/UpdatePrompt'
+import LegalAcceptanceGate from './components/LegalAcceptanceGate'
 import { TABS, TAB_GROUPS, LEGACY_ROUTES } from './lib/tabs'
 import GrimoriosTab from './tabs/GrimoriosTab'
 import QuestsTab from './tabs/QuestsTab'
@@ -104,6 +105,7 @@ function App() {
   return (
     <>
       <UpdatePrompt />
+      <LegalAcceptanceGate />
       {content}
     </>
   )

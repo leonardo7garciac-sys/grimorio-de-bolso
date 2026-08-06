@@ -57,12 +57,12 @@ export default function MensagensView() {
     setEligibility(null)
     const [{ data: suspendedUntil }, { data: guideline }] = await Promise.all([
       supabase.rpc('my_messaging_suspension'),
-      supabase.from('forum_guidelines').select('*').order('version', { ascending: false }).limit(1).maybeSingle(),
+      supabase.from('dm_guidelines').select('*').order('version', { ascending: false }).limit(1).maybeSingle(),
     ])
     let accepted = false
     if (guideline) {
       const { data: acc } = await supabase
-        .from('guideline_acceptances')
+        .from('dm_guideline_acceptances')
         .select('version')
         .eq('version', guideline.version)
       accepted = (acc ?? []).length > 0
@@ -124,14 +124,14 @@ export default function MensagensView() {
     if (!rel || rel.status !== 'aceita') return 'not_friend'
 
     const { data: guideline } = await supabase
-      .from('forum_guidelines')
+      .from('dm_guidelines')
       .select('version')
       .order('version', { ascending: false })
       .limit(1)
       .maybeSingle()
     if (guideline) {
       const { data: acc } = await supabase
-        .from('guideline_acceptances')
+        .from('dm_guideline_acceptances')
         .select('version')
         .eq('version', guideline.version)
       if ((acc ?? []).length === 0) return 'guidelines'
@@ -176,7 +176,7 @@ export default function MensagensView() {
     if (!eligibility?.guideline) return
     setAccepting(true)
     const { error } = await supabase
-      .from('guideline_acceptances')
+      .from('dm_guideline_acceptances')
       .insert({ user_id: user.id, version: eligibility.guideline.version })
     setAccepting(false)
     if (error) {
@@ -283,7 +283,7 @@ export default function MensagensView() {
 
         {state === 'guidelines' && (
           <Card className="p-4 mt-3">
-            <div className="text-sm mb-2">Diretrizes do Círculo</div>
+            <div className="text-sm mb-2">Diretrizes para Correspondências</div>
             <div className="text-xs text-muted leading-relaxed whitespace-pre-wrap max-h-40 overflow-y-auto">
               {eligibility.guideline.body}
             </div>
