@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useProfile } from '../hooks/useProfile'
 import AvatarEtereo from './AvatarEtereo'
+import DeleteAccountSection from './DeleteAccountSection'
 import { SectionLabel } from './ui'
 
 const KIND_LABEL = { arma_magica: 'Arma mágica', item_encantado: 'Item encantado' }
@@ -168,6 +169,8 @@ export default function MagoScreen({ onClose }) {
             })}
           </div>
         )}
+
+        <DeleteAccountSection />
       </div>
     </div>
   )
