@@ -7,6 +7,7 @@ import BottomNav from './components/BottomNav'
 import PremiumGate from './components/PremiumGate'
 import MagoScreen from './components/MagoScreen'
 import GroupedTab from './components/GroupedTab'
+import UpdatePrompt from './components/UpdatePrompt'
 import { TABS, TAB_GROUPS, LEGACY_ROUTES } from './lib/tabs'
 import GrimoriosTab from './tabs/GrimoriosTab'
 import QuestsTab from './tabs/QuestsTab'
@@ -57,48 +58,54 @@ function App() {
     setSection(TAB_GROUPS[id] ? TAB_GROUPS[id][0].id : null)
   }
 
+  let content
   if (authLoading) {
-    return (
+    content = (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-gold text-2xl animate-pulse">🜃</div>
       </div>
     )
-  }
+  } else if (!user) {
+    content = <LoginScreen />
+  } else {
+    const activeTab = TABS.find((t) => t.id === tab)
+    const gated = activeTab.premium && !paying
+    const group = TAB_GROUPS[tab]
+    const TabContent = TAB_COMPONENTS[tab]
 
-  if (!user) {
-    return <LoginScreen />
+    content = (
+      <div className="min-h-screen" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 6rem)' }}>
+        <div className="max-w-md mx-auto px-5">
+          <Header onOpenProfile={() => setShowProfile(true)} />
+          <main className="pt-2">
+            {profileLoading ? (
+              <p className="text-faint text-sm text-center py-10">Carregando…</p>
+            ) : gated ? (
+              <PremiumGate />
+            ) : group ? (
+              <GroupedTab
+                sections={group}
+                section={section}
+                onSectionChange={setSection}
+                components={SECTION_COMPONENTS}
+                paying={paying}
+              />
+            ) : (
+              <TabContent />
+            )}
+          </main>
+        </div>
+        <BottomNav tab={tab} onChange={navigate} paying={paying} servitorsLowCount={servitorsLowCount} />
+        {showProfile && <MagoScreen onClose={() => setShowProfile(false)} />}
+      </div>
+    )
   }
-
-  const activeTab = TABS.find((t) => t.id === tab)
-  const gated = activeTab.premium && !paying
-  const group = TAB_GROUPS[tab]
-  const TabContent = TAB_COMPONENTS[tab]
 
   return (
-    <div className="min-h-screen" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 6rem)' }}>
-      <div className="max-w-md mx-auto px-5">
-        <Header onOpenProfile={() => setShowProfile(true)} />
-        <main className="pt-2">
-          {profileLoading ? (
-            <p className="text-faint text-sm text-center py-10">Carregando…</p>
-          ) : gated ? (
-            <PremiumGate />
-          ) : group ? (
-            <GroupedTab
-              sections={group}
-              section={section}
-              onSectionChange={setSection}
-              components={SECTION_COMPONENTS}
-              paying={paying}
-            />
-          ) : (
-            <TabContent />
-          )}
-        </main>
-      </div>
-      <BottomNav tab={tab} onChange={navigate} paying={paying} servitorsLowCount={servitorsLowCount} />
-      {showProfile && <MagoScreen onClose={() => setShowProfile(false)} />}
-    </div>
+    <>
+      <UpdatePrompt />
+      {content}
+    </>
   )
 }
 
