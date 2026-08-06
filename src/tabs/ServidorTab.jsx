@@ -4,6 +4,55 @@ import { useAuth } from '../hooks/useAuth'
 import { useProfile } from '../hooks/useProfile'
 import { Card, SectionLabel, GoldButton, GhostButton } from '../components/ui'
 
+const RECHARGE_MIN = 1
+const RECHARGE_MAX = 365
+const RECHARGE_SHORTCUTS = [7, 14, 28, 30]
+
+function clampRechargeDays(value) {
+  return Math.max(RECHARGE_MIN, Math.min(RECHARGE_MAX, value))
+}
+
+function RechargeDaysPicker({ value, onChange }) {
+  return (
+    <div className="mb-3">
+      <label className="block text-[11px] text-muted mb-1.5">Intervalo de recarga (dias)</label>
+      <div className="flex items-center gap-2 mb-2">
+        <button
+          type="button"
+          onClick={() => onChange(clampRechargeDays(value - 1))}
+          disabled={value <= RECHARGE_MIN}
+          className="w-11 h-11 flex-shrink-0 grid place-items-center bg-white/[.04] border border-gold/25 rounded-lg text-gold text-lg cursor-pointer disabled:opacity-30 disabled:cursor-default"
+        >
+          −
+        </button>
+        <div className="flex-1 text-center text-ink text-base tabular-nums">{value}</div>
+        <button
+          type="button"
+          onClick={() => onChange(clampRechargeDays(value + 1))}
+          disabled={value >= RECHARGE_MAX}
+          className="w-11 h-11 flex-shrink-0 grid place-items-center bg-white/[.04] border border-gold/25 rounded-lg text-gold text-lg cursor-pointer disabled:opacity-30 disabled:cursor-default"
+        >
+          +
+        </button>
+      </div>
+      <div className="flex gap-2">
+        {RECHARGE_SHORTCUTS.map((days) => (
+          <button
+            key={days}
+            type="button"
+            onClick={() => onChange(days)}
+            className={`flex-1 h-10 rounded-lg text-xs cursor-pointer border ${
+              value === days ? 'bg-gradient-to-r from-gold to-gold-light text-navy-deep border-transparent' : 'bg-white/[.04] border-gold/25 text-muted'
+            }`}
+          >
+            {days}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function statusInfo(row) {
   if (row.is_charged) {
     const days = Math.ceil((new Date(row.next_charge_due).getTime() - Date.now()) / 86400000)
@@ -261,15 +310,7 @@ export default function ServidorTab() {
             rows={4}
             className="w-full box-border bg-white/[.04] border border-gold/25 rounded-lg text-ink text-base p-2.5 mb-2 resize-y placeholder:text-faint focus:outline-none focus:border-gold"
           />
-          <label className="block text-[11px] text-muted mb-1">Intervalo de recarga (dias)</label>
-          <input
-            type="number"
-            min={1}
-            max={365}
-            value={rechargeDays}
-            onChange={(e) => setRechargeDays(Math.max(1, Math.min(365, Number(e.target.value) || 1)))}
-            className="w-24 box-border bg-white/[.04] border border-gold/25 rounded-lg text-ink text-base p-2.5 mb-3 focus:outline-none focus:border-gold"
-          />
+          <RechargeDaysPicker value={rechargeDays} onChange={setRechargeDays} />
           <div>
             <GoldButton small disabled={name.trim().length < 2 || creating} onClick={create}>
               {creating ? 'Vinculando…' : 'Vincular servidor'}
@@ -358,15 +399,7 @@ export default function ServidorTab() {
                 rows={5}
                 className="w-full box-border bg-white/[.04] border border-gold/25 rounded-lg text-ink text-base p-2.5 mb-2 resize-y focus:outline-none focus:border-gold"
               />
-              <label className="block text-[11px] text-muted mb-1">Intervalo de recarga (dias)</label>
-              <input
-                type="number"
-                min={1}
-                max={365}
-                value={editRechargeDays}
-                onChange={(e) => setEditRechargeDays(Math.max(1, Math.min(365, Number(e.target.value) || 1)))}
-                className="w-24 box-border bg-white/[.04] border border-gold/25 rounded-lg text-ink text-base p-2.5 mb-3 focus:outline-none focus:border-gold"
-              />
+              <RechargeDaysPicker value={editRechargeDays} onChange={setEditRechargeDays} />
               <div className="flex gap-2">
                 <GoldButton small disabled={editName.trim().length < 2 || savingEdit} onClick={() => saveEdit(servitor)}>
                   {savingEdit ? 'Salvando…' : 'Salvar'}
