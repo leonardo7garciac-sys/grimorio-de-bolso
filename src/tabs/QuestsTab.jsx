@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { useProfile } from '../hooks/useProfile'
 import { periodKey } from '../lib/periodKey'
+import { CIRCULO_CHECKOUT_URL } from '../lib/links'
 import { Card, SectionLabel, GoldButton } from '../components/ui'
 
 const STATE_LABEL = {
@@ -13,7 +14,7 @@ const STATE_LABEL = {
 
 export default function QuestsTab() {
   const { user } = useAuth()
-  const { refresh: refreshProfile } = useProfile()
+  const { paying, refresh: refreshProfile } = useProfile()
 
   const [quests, setQuests] = useState(null)
   const [error, setError] = useState('')
@@ -65,7 +66,7 @@ export default function QuestsTab() {
     })
     setBusyId(null)
     if (error) {
-      alert(error.message)
+      alert(error.hint || error.message)
       return
     }
     setProofFor(null)
@@ -121,6 +122,18 @@ export default function QuestsTab() {
                     “{reviewNotes[q.quest_id]}”
                   </div>
                 )}
+              </div>
+            ) : q.is_premium && !paying ? (
+              <div className="mt-3 flex items-center gap-2 flex-wrap">
+                <span className="text-xs text-faint">🗝 Exclusiva do Círculo</span>
+                <a
+                  href={CIRCULO_CHECKOUT_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-gold underline"
+                >
+                  assinar o Círculo
+                </a>
               </div>
             ) : open ? (
               <div className="mt-3">
