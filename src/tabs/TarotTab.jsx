@@ -98,6 +98,7 @@ export default function TarotTab() {
   const [selectedCard, setSelectedCard] = useState(null) // { readingId, position }
   const [noteDraft, setNoteDraft] = useState('')
   const [savingNote, setSavingNote] = useState(false)
+  const [deletingId, setDeletingId] = useState(null)
 
   const [positions, setPositions] = useState(null) // { [spread]: { [posicao]: { name, meaning } } }
   const [error, setError] = useState('')
@@ -128,7 +129,7 @@ export default function TarotTab() {
   async function loadHistory() {
     const { data, error } = await supabase
       .from('tarot_readings')
-      .select('id, spread, question, cards, note, created_at')
+      .select('id, spread, question, cards, note, period_key, created_at')
       .order('created_at', { ascending: false })
     if (error) {
       setError(error.message)
@@ -213,6 +214,29 @@ export default function TarotTab() {
       alert(error.message)
       return
     }
+    await loadHistory()
+  }
+
+  async function deleteReading(reading) {
+    const ok = window.confirm('Apagar esta tiragem? A anotação também é perdida — não pode ser desfeito.')
+    if (!ok) return
+    setDeletingId(reading.id)
+    // A policy recusa apagar a carta do dia de hoje. Isso não vem como
+    // erro: a linha simplesmente não casa com o `using` e nada é
+    // apagado -- por isso o .select('id') para distinguir "apagou" de
+    // "a policy barrou".
+    const { data, error } = await supabase.from('tarot_readings').delete().eq('id', reading.id).select('id')
+    setDeletingId(null)
+    if (error) {
+      alert(error.message)
+      return
+    }
+    if (!data || data.length === 0) {
+      alert('A carta do dia de hoje não pode ser apagada — ela só se refaz a partir de amanhã.')
+      return
+    }
+    setExpandedId(null)
+    setSelectedCard(null)
     await loadHistory()
   }
 
@@ -308,6 +332,7 @@ export default function TarotTab() {
         history.map((r) => {
           const cards = normalizeCards(r.cards, cardsBySlug)
           const open = expandedId === r.id
+          const isTodaysDaily = r.spread === 'uma' && r.period_key === periodKey('diaria')
           return (
             <Card key={r.id} className="p-3.5">
               <button
@@ -382,9 +407,16 @@ export default function TarotTab() {
                     rows={3}
                     className="w-full box-border bg-white/[.04] border border-gold/25 rounded-lg text-ink text-sm p-2.5 mb-2 resize-y placeholder:text-faint focus:outline-none focus:border-gold"
                   />
-                  <GhostButton disabled={savingNote} onClick={() => saveNote(r)}>
-                    {savingNote ? 'Salvando…' : 'Salvar anotação'}
-                  </GhostButton>
+                  <div className="flex gap-2">
+                    <GhostButton disabled={savingNote} onClick={() => saveNote(r)}>
+                      {savingNote ? 'Salvando…' : 'Salvar anotação'}
+                    </GhostButton>
+                    {!isTodaysDaily && (
+                      <GhostButton hue="var(--color-red)" disabled={deletingId === r.id} onClick={() => deleteReading(r)}>
+                        {deletingId === r.id ? 'Apagando…' : 'Apagar tiragem'}
+                      </GhostButton>
+                    )}
+                  </div>
                 </div>
               )}
             </Card>
