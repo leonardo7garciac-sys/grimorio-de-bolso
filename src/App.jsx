@@ -19,6 +19,7 @@ import ForumTab from './tabs/ForumTab'
 import RankingTab from './tabs/RankingTab'
 import ServidorTab from './tabs/ServidorTab'
 import SigilizadorTab from './tabs/SigilizadorTab'
+import TarotTab from './tabs/TarotTab'
 import CirculoTab from './tabs/CirculoTab'
 
 const TAB_COMPONENTS = {
@@ -35,6 +36,7 @@ const SECTION_COMPONENTS = {
   ranking: RankingTab,
   servidor_astral: ServidorTab,
   sigilizador: SigilizadorTab,
+  tarot: TarotTab,
 }
 
 function App() {

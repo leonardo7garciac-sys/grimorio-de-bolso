@@ -25,6 +25,7 @@ export const TAB_GROUPS = {
   servidor: [
     { id: 'servidor_astral', label: 'Servidor Astral' },
     { id: 'sigilizador', label: 'Sigilizador', premium: true },
+    { id: 'tarot', label: 'Tarot' },
   ],
 }
 
