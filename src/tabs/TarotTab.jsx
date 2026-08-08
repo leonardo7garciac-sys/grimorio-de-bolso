@@ -5,6 +5,19 @@ import { Card, SectionLabel, GoldButton, GhostButton } from '../components/ui'
 import PremiumGate from '../components/PremiumGate'
 import { periodKey } from '../lib/periodKey'
 
+// Redação sujeita a ajuste — mantida numa constante única para não
+// espalhar o texto pelo componente.
+const TAROT_INTRO = {
+  short:
+    'Instrumento de reflexão, não de previsão. As cartas não dizem o que vai acontecer — ajudam a enxergar o que já está diante de você.',
+  title: 'O que o tarô é',
+  body: `O tarô não prevê o futuro. É um instrumento de reflexão: setenta e oito imagens que a tradição ocidental refinou ao longo de séculos, até que cada uma condensasse uma situação humana reconhecível.
+
+O que a carta faz é obrigar você a nomear o que já percebia e ainda não tinha dito. Diante de uma imagem ambígua, projetamos o que carregamos — e é isso que aparece na leitura. A psicologia chama esse tipo de recurso de instrumento projetivo; a tradição chama de espelho. As duas descrições apontam para a mesma coisa.
+
+Por isso a pergunta útil nunca é "o que vai acontecer comigo", e sim "o que estou deixando de ver nesta situação, e como agir a partir daqui".`,
+}
+
 const MAJOR_SPREADS = [
   { id: 'tres', label: 'Três Cartas' },
   { id: 'cruz_celta', label: 'Cruz Celta' },
@@ -69,6 +82,8 @@ function TarotCardFace({ name, imagePath, reversed, size = 160 }) {
 
 export default function TarotTab() {
   const { paying } = useProfile()
+
+  const [introOpen, setIntroOpen] = useState(false)
 
   const [cardsBySlug, setCardsBySlug] = useState(null)
   const [dailyReading, setDailyReading] = useState(undefined) // undefined = carregando, null = ainda não tirada hoje
@@ -206,6 +221,24 @@ export default function TarotTab() {
 
   return (
     <>
+      <p className="text-[11px] text-faint text-center leading-relaxed mb-3">{TAROT_INTRO.short}</p>
+
+      <Card className="p-3.5 mb-4">
+        <button
+          type="button"
+          onClick={() => setIntroOpen((v) => !v)}
+          className="w-full flex items-center gap-2 bg-transparent border-none text-left cursor-pointer p-0"
+        >
+          <span className="text-[13px] flex-1">{TAROT_INTRO.title}</span>
+          <span className="text-faint text-xs flex-shrink-0">{introOpen ? '▲' : '▼'}</span>
+        </button>
+        {introOpen && (
+          <p className="text-[13px] text-muted leading-relaxed whitespace-pre-wrap mt-3 pt-3 border-t border-white/5">
+            {TAROT_INTRO.body}
+          </p>
+        )}
+      </Card>
+
       <SectionLabel>Carta do Dia</SectionLabel>
       <Card className="p-4 flex flex-col items-center text-center gap-3">
         {!ready || dailyReading === undefined ? (
