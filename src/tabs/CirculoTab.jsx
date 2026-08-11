@@ -29,7 +29,7 @@ export default function CirculoTab() {
   if (!profile.nickname) {
     return (
       <>
-        <SectionLabel>Círculo Social</SectionLabel>
+        <SectionLabel>Social</SectionLabel>
         <NicknameGate onDone={() => {}} />
       </>
     )
@@ -38,7 +38,7 @@ export default function CirculoTab() {
   if (settingsView === 'nickname') {
     return (
       <>
-        <SectionLabel>Configurações do Círculo</SectionLabel>
+        <SectionLabel>Configurações do Social</SectionLabel>
         <NicknameGate onDone={() => setSettingsView('menu')} onCancel={() => setSettingsView('menu')} />
       </>
     )
@@ -56,9 +56,9 @@ export default function CirculoTab() {
           onClick={() => setSettingsView(null)}
           className="bg-transparent border-none text-gold text-sm cursor-pointer pb-3.5"
         >
-          ← Círculo
+          ← Social
         </button>
-        <SectionLabel>Configurações do Círculo</SectionLabel>
+        <SectionLabel>Configurações do Social</SectionLabel>
 
         <Card className="p-4 flex items-center gap-3">
           <div className="flex-1">
@@ -85,7 +85,7 @@ export default function CirculoTab() {
   return (
     <>
       <div className="flex items-center mb-3">
-        <SectionLabel>Círculo Social</SectionLabel>
+        <SectionLabel>Social</SectionLabel>
         <div className="flex-1" />
         <GhostButton onClick={() => setSettingsView('menu')}>⚙ configurações</GhostButton>
       </div>

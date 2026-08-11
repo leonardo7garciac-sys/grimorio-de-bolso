@@ -180,7 +180,7 @@ export default function AmigosView({ onProposeTrade }) {
 
       <SectionLabel>Teus amigos</SectionLabel>
       {accepted.length === 0 ? (
-        <p className="text-[13px] text-faint text-center py-8">Ainda não tens amigos no Círculo.</p>
+        <p className="text-[13px] text-faint text-center py-8">Ainda não tens amigos no Social.</p>
       ) : (
         accepted.map((f) => (
           <Card key={f.friendship_id} className="p-3.5 flex items-center gap-3">

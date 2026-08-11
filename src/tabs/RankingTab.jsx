@@ -34,7 +34,7 @@ export default function RankingTab() {
     loadRanking()
   }, [])
 
-  // O nickname em si é definido na aba Círculo (é livre, não premium) — aqui
+  // O nickname em si é definido na aba Social (é livre, não premium) — aqui
   // só cuidamos do opt-in de aparecer no ranking, já com o nickname pronto.
   async function toggleShow(nextShow) {
     setSaveError('')
@@ -72,7 +72,7 @@ export default function RankingTab() {
 
       {!hasNickname ? (
         <p className="text-xs text-faint text-center py-4 leading-relaxed">
-          Define teu nickname na aba Círculo antes de aparecer no ranking.
+          Define teu nickname na aba Social antes de aparecer no ranking.
         </p>
       ) : (
         <Card className="p-4 mb-4 flex items-center gap-3">

@@ -42,7 +42,7 @@ export default function NicknameGate({ onDone, onCancel }) {
     <Card className="p-4">
       <div className="text-base mb-1.5">Escolhe teu nome de mago</div>
       <p className="text-[13px] text-muted leading-relaxed mb-3">
-        Este nickname é a tua identidade pública no Círculo — é assim que amigos, trocas, correspondências e o
+        Este nickname é a tua identidade pública no Social — é assim que amigos, trocas, correspondências e o
         ranking te reconhecem. Teu e-mail e nome real nunca são exibidos a outros usuários.
       </p>
       <form onSubmit={save}>

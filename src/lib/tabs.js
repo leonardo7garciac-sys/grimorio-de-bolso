@@ -4,7 +4,7 @@ export const TABS = [
   { id: 'compendio', label: 'Compêndio', icon: '🜏', premium: true },
   { id: 'conclave', label: 'Conclave', icon: '🗣', premium: true },
   { id: 'servidor', label: 'FORJA', icon: '🕸', premium: false },
-  { id: 'circle', label: 'Círculo', icon: '👥', premium: false },
+  { id: 'circle', label: 'Social', icon: '👥', premium: false },
 ]
 
 // Cada aba agrupada reúne duas seções antigas sob um seletor no topo da
