@@ -153,16 +153,12 @@ async function handleApproved({ productId, email, transaction, env }) {
   const isCirculo = productId === env.CIRCULO_PRODUCT_ID
   const grimoire = isCirculo ? null : await findGrimoireByPid(productId, env)
 
-  if (!isCirculo && !grimoire) {
-    console.error('hotmart webhook: nenhuma ação — product_id não é o do Círculo e não bate com nenhum hotmart_pid em grimoires', {
-      productId, email, transaction,
-    })
-    return
-  }
-
+  // Produto que não é o Círculo nem bate com um grimório (ex.: ebook sem
+  // técnicas no app) não fica mais sem ação: toda compra aprovada concede
+  // ao menos o mês de Círculo — só o entitlement de grimório é condicional.
   console.log('hotmart webhook: produto identificado', {
     productId,
-    produto: isCirculo ? 'circulo' : `grimorio:${grimoire.slug}`,
+    produto: isCirculo ? 'circulo' : grimoire ? `grimorio:${grimoire.slug}` : 'produto_nao_catalogado',
   })
 
   const source = isCirculo ? 'assinatura' : 'compra_ebook'
