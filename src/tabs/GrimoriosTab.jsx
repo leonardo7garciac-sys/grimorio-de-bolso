@@ -41,7 +41,11 @@ export default function GrimoriosTab() {
     setGrimoires(null)
     setCatalogError('')
     const [{ data: spells, error: spellsError }, { data: grim, error: grimError }] = await Promise.all([
-      supabase.from('spells').select('id, name, description, xp_reward, grimoire_id').is('owner_id', null),
+      supabase
+        .from('spells')
+        .select('id, name, description, xp_reward, grimoire_id')
+        .is('owner_id', null)
+        .order('sort_order', { ascending: true }),
       supabase.from('my_grimoires').select('*'),
     ])
     if (spellsError || grimError) {
