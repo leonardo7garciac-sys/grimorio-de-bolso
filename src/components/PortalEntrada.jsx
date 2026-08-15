@@ -27,8 +27,8 @@ export default function PortalEntrada({ estreia, apelido, pronto, onFim }) {
   const frase2 = estreia
     ? 'Primeira travessia do véu. Qual aspecto da realidade vamos alterar hoje?'
     : apelido
-      ? `Atravessando novamente o véu, ${apelido}, qual aspecto da realidade vamos alterar hoje?`
-      : 'Atravessando novamente o véu. Qual aspecto da realidade vamos alterar hoje?'
+      ? `Olá ${apelido}, qual aspecto da realidade vamos alterar hoje?`
+      : 'Qual aspecto da realidade vamos alterar hoje?'
 
   useEffect(() => {
     // Guarda contra remontagem de efeito (StrictMode em dev) -- a
