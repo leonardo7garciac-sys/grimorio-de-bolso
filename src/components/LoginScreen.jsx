@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../hooks/useAuth'
+import { unlockAudio } from '../lib/audio'
 
 const EMAIL_RE = /^(?!\.)(?!.*\.\.)[^\s@]+(?<!\.)@[^\s@]+\.[^\s@]+$/
 const GENERIC_SEND_ERROR = 'Não foi possível enviar o código. Confira o e-mail e tente de novo.'
@@ -15,6 +17,7 @@ function readableAuthError(err) {
 }
 
 export default function LoginScreen() {
+  const { markJustVerified } = useAuth()
   const [email, setEmail] = useState('')
   const [status, setStatus] = useState('idle') // idle | sending | sent | error
   const [error, setError] = useState('')
@@ -54,6 +57,10 @@ export default function LoginScreen() {
     e.preventDefault()
     setCodeError('')
     setVerifying(true)
+    // Precisa nascer aqui, síncrono com o clique/submit -- é o único
+    // gesto do usuário disponível neste fluxo, e o AudioContext exige um
+    // para sair do estado suspenso.
+    unlockAudio()
     const { error } = await supabase.auth.verifyOtp({
       email,
       token: code.trim(),
@@ -62,7 +69,9 @@ export default function LoginScreen() {
     setVerifying(false)
     if (error) {
       setCodeError(error.message)
+      return
     }
+    markJustVerified()
     // sucesso: onAuthStateChange cuida do resto, não precisa navegar aqui.
   }
 

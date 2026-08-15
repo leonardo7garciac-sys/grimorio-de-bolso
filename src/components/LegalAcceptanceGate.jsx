@@ -1,14 +1,17 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import { isFreshSignup as checkFreshSignup } from '../lib/freshSignup'
+import { unlockAudio } from '../lib/audio'
 
-// Não há passo distinto de "cadastro" no app -- login e criação de conta
-// são o mesmo fluxo de código por e-mail. Distingo conta recém-criada de
-// conta antiga com pendência retroativa pela idade de user.created_at:
-// se a conta nasceu há poucos minutos, é a primeira sessão de verdade.
-const FRESH_SIGNUP_WINDOW_MS = 10 * 60 * 1000
-
-export default function LegalAcceptanceGate() {
+// onBlockingChange (opcional) é avisado sempre que este gate passa a
+// bloquear a tela ou deixa de bloquear -- o App usa isso para não montar
+// o PortalEntrada por cima de uma pendência de aceite legal ainda não
+// resolvida. Enquanto `pending` não chegou do banco, contamos como
+// bloqueante (conservador): evita o Portal "piscar" antes de sabermos se
+// há documento pendente, justamente no caso de conta recém-criada, que é
+// onde os dois fluxos mais se cruzam.
+export default function LegalAcceptanceGate({ onBlockingChange }) {
   const { user } = useAuth()
   const [pending, setPending] = useState(null)
   const [checkedDocs, setCheckedDocs] = useState(false)
@@ -28,14 +31,23 @@ export default function LegalAcceptanceGate() {
     }
   }, [user])
 
-  if (!user || !pending || pending.length === 0) return null
+  const isFreshSignup = user ? checkFreshSignup(user) : false
+  const isBlocking =
+    Boolean(user) && (pending === null || (pending.length > 0 && (isFreshSignup || !dismissed)))
 
-  const isFreshSignup = Date.now() - new Date(user.created_at).getTime() < FRESH_SIGNUP_WINDOW_MS
+  useEffect(() => {
+    onBlockingChange?.(isBlocking)
+  }, [isBlocking, onBlockingChange])
+
+  if (!user || !pending || pending.length === 0) return null
   if (!isFreshSignup && dismissed) return null
 
   const canAccept = checkedDocs && checkedAge
 
   async function accept() {
+    // Toque válido para religar o AudioContext, caso o celular já tenha
+    // suspendido por inatividade entre o código e este passo.
+    unlockAudio()
     setBusy(true)
     setError('')
     const rows = pending.map((p) => ({ user_id: user.id, kind: p.kind, version: p.version }))

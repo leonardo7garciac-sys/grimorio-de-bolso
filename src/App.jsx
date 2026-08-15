@@ -9,7 +9,9 @@ import MagoScreen from './components/MagoScreen'
 import GroupedTab from './components/GroupedTab'
 import UpdatePrompt from './components/UpdatePrompt'
 import LegalAcceptanceGate from './components/LegalAcceptanceGate'
+import PortalEntrada from './components/PortalEntrada'
 import { TABS, TAB_GROUPS, LEGACY_ROUTES } from './lib/tabs'
+import { isFreshSignup } from './lib/freshSignup'
 import GrimoriosTab from './tabs/GrimoriosTab'
 import QuestsTab from './tabs/QuestsTab'
 import TesouroTab from './tabs/TesouroTab'
@@ -40,11 +42,15 @@ const SECTION_COMPONENTS = {
 }
 
 function App() {
-  const { user, loading: authLoading } = useAuth()
-  const { paying, servitorsLowCount, loading: profileLoading } = useProfile()
+  const { user, justVerified, clearJustVerified, loading: authLoading } = useAuth()
+  const { profile, paying, servitorsLowCount, loading: profileLoading } = useProfile()
   const [tab, setTab] = useState('grimoires')
   const [section, setSection] = useState(null)
   const [showProfile, setShowProfile] = useState(false)
+  // Começa bloqueado por padrão: LegalAcceptanceGate ainda não teve chance
+  // de dizer se há pendência, e o PortalEntrada não pode arriscar aparecer
+  // por cima de um aceite de termos ainda por resolver.
+  const [legalBlocking, setLegalBlocking] = useState(true)
 
   // Ponto único de navegação entre abas: aceita tanto os ids novos
   // (aba agrupada, cai na primeira seção) quanto os ids de antes do
@@ -107,8 +113,16 @@ function App() {
   return (
     <>
       <UpdatePrompt />
-      <LegalAcceptanceGate />
+      <LegalAcceptanceGate onBlockingChange={setLegalBlocking} />
       {content}
+      {user && justVerified && !legalBlocking && (
+        <PortalEntrada
+          estreia={isFreshSignup(user)}
+          apelido={profile?.nickname ?? null}
+          pronto={!profileLoading}
+          onFim={clearJustVerified}
+        />
+      )}
     </>
   )
 }

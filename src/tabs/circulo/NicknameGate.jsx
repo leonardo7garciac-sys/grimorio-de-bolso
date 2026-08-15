@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useProfile } from '../../hooks/useProfile'
 import { Card, GoldButton } from '../../components/ui'
+import { unlockAudio } from '../../lib/audio'
 
 const SET_IDENTITY_MESSAGE = {
   nickname_em_uso: 'Esse nickname já está em uso.',
@@ -19,6 +20,9 @@ export default function NicknameGate({ onDone, onCancel }) {
 
   async function save(e) {
     e.preventDefault()
+    // Toque válido para religar o AudioContext, caso o celular já tenha
+    // suspendido por inatividade entre o código e este passo.
+    unlockAudio()
     setError('')
     setSaving(true)
     const { data, error } = await supabase.rpc('set_ranking_identity', {

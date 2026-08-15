@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useProfile } from '../hooks/useProfile'
+import { somLigado, setSomLigado } from '../lib/audio'
 import AvatarEtereo from './AvatarEtereo'
 import DeleteAccountSection from './DeleteAccountSection'
-import { SectionLabel } from './ui'
+import { Card, SectionLabel } from './ui'
 
 const KIND_LABEL = { arma_magica: 'Arma mágica', item_encantado: 'Item encantado' }
 const KIND_GLYPH = { arma_magica: '🗡', item_encantado: '🜏' }
@@ -17,6 +18,12 @@ export default function MagoScreen({ onClose }) {
   const [imageUrls, setImageUrls] = useState({})
   const [equippedImageUrls, setEquippedImageUrls] = useState({})
   const [busyId, setBusyId] = useState(null)
+  const [soundOnEntry, setSoundOnEntry] = useState(() => somLigado())
+
+  function toggleSoundOnEntry(checked) {
+    setSoundOnEntry(checked)
+    setSomLigado(checked)
+  }
 
   const arsenal = useMemo(
     () => equippedItems.filter((e) => ['arma_magica', 'item_encantado'].includes(e.shop_items?.kind)),
@@ -169,6 +176,19 @@ export default function MagoScreen({ onClose }) {
             })}
           </div>
         )}
+
+        <SectionLabel>Preferências</SectionLabel>
+        <Card className="p-4 flex items-center gap-3">
+          <div className="flex-1">
+            <div className="text-sm">Som na entrada</div>
+            <div className="text-[11px] text-muted mt-0.5">Toca ao confirmar o código de acesso</div>
+          </div>
+          <input
+            type="checkbox"
+            checked={soundOnEntry}
+            onChange={(e) => toggleSoundOnEntry(e.target.checked)}
+          />
+        </Card>
 
         <div className="flex items-center justify-center gap-3 mt-10">
           <a href="/legal/termos" target="_blank" rel="noopener noreferrer" className="text-[11px] text-faint no-underline">
