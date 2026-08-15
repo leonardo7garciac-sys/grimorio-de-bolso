@@ -12,6 +12,7 @@ export default function GrimoriosTab() {
 
   const [collection, setCollection] = useState(null)
   const [collectionError, setCollectionError] = useState('')
+  const [masteryCounts, setMasteryCounts] = useState({})
   const [view, setView] = useState('colecao') // colecao | adicionar
   const [openSpellId, setOpenSpellId] = useState(null)
   const [journalBySpell, setJournalBySpell] = useState({})
@@ -32,8 +33,24 @@ export default function GrimoriosTab() {
     }
   }
 
+  // Dominadas/total vêm os dois do catálogo (spell_mastery e spells),
+  // separado da coleção rastreada — uma técnica dominada e depois
+  // destrackeada não deixaria linha em my_collection() para essa contagem,
+  // e o denominador precisa do catálogo inteiro, não só do rastreado.
+  async function loadMasteryCounts() {
+    const { data, error } = await supabase.rpc('my_mastery_counts')
+    if (!error) {
+      const byGrimoire = {}
+      for (const row of data ?? []) {
+        byGrimoire[row.grimoire_id] = { dominadas: Number(row.dominadas), total: Number(row.total) }
+      }
+      setMasteryCounts(byGrimoire)
+    }
+  }
+
   useEffect(() => {
     loadCollection()
+    loadMasteryCounts()
   }, [])
 
   async function loadCatalog() {
@@ -68,8 +85,12 @@ export default function GrimoriosTab() {
   }
 
   async function setStatus(spellId, status) {
-    await supabase.from('user_spells').upsert({ user_id: user.id, spell_id: spellId, status })
-    await Promise.all([loadCollection(), refreshProfile()])
+    const { error } = await supabase.from('user_spells').upsert({ user_id: user.id, spell_id: spellId, status })
+    if (error) {
+      alert(error.hint || error.message)
+      return
+    }
+    await Promise.all([loadCollection(), loadMasteryCounts(), refreshProfile()])
   }
 
   async function untrack(spellId) {
@@ -79,7 +100,7 @@ export default function GrimoriosTab() {
     if (!ok) return
     await supabase.from('user_spells').delete().eq('user_id', user.id).eq('spell_id', spellId)
     setOpenSpellId(null)
-    await Promise.all([loadCollection(), refreshProfile()])
+    await Promise.all([loadCollection(), loadMasteryCounts(), refreshProfile()])
   }
 
   async function deleteCustom(spellId) {
@@ -87,7 +108,7 @@ export default function GrimoriosTab() {
     if (!ok) return
     await supabase.from('spells').delete().eq('id', spellId)
     setOpenSpellId(null)
-    await Promise.all([loadCollection(), refreshProfile()])
+    await Promise.all([loadCollection(), loadMasteryCounts(), refreshProfile()])
   }
 
   async function forge() {
@@ -187,6 +208,7 @@ export default function GrimoriosTab() {
             description={row.spell_description}
             status={row.status}
             onStatusChange={(status) => setStatus(row.spell_id, status)}
+            journalDays={row.journal_days}
             entries={entries}
             onAddEntry={(body) => addJournalEntry(row.spell_id, body)}
             onRemoveEntry={(entryId) => removeJournalEntry(row.spell_id, entryId)}
@@ -329,7 +351,7 @@ export default function GrimoriosTab() {
       )}
 
       {catalogGroups.map((g) => {
-        const dominated = g.rows.filter((r) => r.status === 'dominado').length
+        const counts = masteryCounts[g.key] ?? { dominadas: 0, total: g.rows.length }
         return (
           <Card key={g.key}>
             <div className="flex items-center gap-3 px-4 pt-3.5 pb-1.5">
@@ -337,7 +359,7 @@ export default function GrimoriosTab() {
               <span className="flex-1">
                 <div className="text-base">{g.title}</div>
                 <div className="text-[11px] text-muted">
-                  {dominated}/{g.rows.length} dominadas
+                  {counts.dominadas}/{counts.total} dominadas
                 </div>
               </span>
             </div>

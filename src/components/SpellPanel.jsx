@@ -8,11 +8,14 @@ function formatEntryDate(iso) {
     .replace('.', '')
 }
 
+const DIAS_MINIMOS_DOMINIO = 3
+
 export default function SpellPanel({
   hue,
   description,
   status,
   onStatusChange,
+  journalDays,
   entries,
   onAddEntry,
   onRemoveEntry,
@@ -22,6 +25,11 @@ export default function SpellPanel({
 }) {
   const [draft, setDraft] = useState('')
   const [saving, setSaving] = useState(false)
+
+  // Antecipa o portão de domínio da migração 047: técnica pessoal não passa
+  // por ele, e quem já dominou não precisa ver a contagem regressiva.
+  const faltamDias =
+    !isCustom && status !== 'dominado' ? Math.max(0, DIAS_MINIMOS_DOMINIO - (journalDays ?? 0)) : 0
 
   async function submitEntry() {
     const body = draft.trim()
@@ -55,6 +63,13 @@ export default function SpellPanel({
 
       {description && (
         <p className="text-[13px] text-muted leading-relaxed mb-3.5">{description}</p>
+      )}
+
+      {faltamDias > 0 && (
+        <p className="text-[11px] text-faint mb-3.5">
+          {Math.min(journalDays ?? 0, DIAS_MINIMOS_DOMINIO)} de {DIAS_MINIMOS_DOMINIO} dias de diário
+          registrados — faltam {faltamDias} dia{faltamDias > 1 ? 's' : ''} para poder dominar.
+        </p>
       )}
 
       <div className="text-[10px] tracking-wide uppercase text-gold mb-2">Diário de práticas</div>
