@@ -8,8 +8,17 @@ external payment platform.
 
 > Interface and content are in Brazilian Portuguese. This document is in English.
 
-<!-- TODO: add a screenshot or GIF here. Two or three screens is enough.
-     Drag an image into a GitHub issue comment to get a hosted URL, then use it. -->
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/f5e462f4-6f4c-4272-b4c3-04117230f976" width="200">
+  <img src="https://github.com/user-attachments/assets/07e34f26-ca2a-4dd0-9987-1b2e936287e9" width="200">
+  <img src="https://github.com/user-attachments/assets/f897d466-74c6-498b-b1e1-2d0687a53072" width="200">
+  <img src="https://github.com/user-attachments/assets/fbeeda93-cc72-4b72-aaf3-f785e4eb38a6" width="200">
+</p>
+
+<p align="center">
+  <em>Progression is enforced at the database level — practices can't be
+  fast-forwarded, not even by me.</em>
+</p>
 
 ---
 
